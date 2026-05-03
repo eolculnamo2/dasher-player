@@ -1,0 +1,22 @@
+{
+  "name": "dasher-effect",
+  "private": true,
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "start": "bun run ./src/main.ts",
+    "build": "bun build ./src/main.ts --outdir ./build",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "dependencies": {
+    "effect": "^3.21.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxfmt": "^0.47.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
