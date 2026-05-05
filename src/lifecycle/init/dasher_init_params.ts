@@ -1,4 +1,4 @@
-import { ManifestUrl } from "../../domain/manifest_url/manifest_url";
+import { ManifestUrl } from "@/src/domain/manifest_url/manifest_url";
 
 // import type { DasherError } from "../domain/error";
 

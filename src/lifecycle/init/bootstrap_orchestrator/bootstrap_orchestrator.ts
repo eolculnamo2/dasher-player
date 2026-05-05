@@ -1,7 +1,7 @@
 import { Effect } from "effect";
-import { MediaSourceModule } from "../../../domain/media_source/media_source";
-import type { Dasher } from "../dasher_init_params";
-import { ManifestFetcher } from "../../../fetchers/manifest_fetcher/manifest_fetcher";
+import { MediaSourceModule } from "@/src/domain/media_source/media_source";
+import type { Dasher } from "@/src/lifecycle/init/dasher_init_params";
+import { ManifestFetcher } from "@/src/fetchers/manifest_fetcher/manifest_fetcher";
 
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T) =>

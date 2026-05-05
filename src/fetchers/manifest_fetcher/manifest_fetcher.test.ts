@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { HttpClient, HttpClientError } from "@effect/platform";
 import type { HttpClientResponse } from "@effect/platform/HttpClientResponse";
 import { Duration, Effect, Either, Fiber, TestClock, TestContext } from "effect";
-import type { ManifestUrl } from "../../domain/manifest_url";
-import { ManifestFetcher } from "./manifest_fetcher";
+import type { ManifestUrl } from "@/src/domain/manifest_url/manifest_url";
+import { ManifestFetcher } from "@/src/fetchers/manifest_fetcher/manifest_fetcher";
 
 const url = "https://example.com/manifest.mpd" as ManifestUrl.T;
 
