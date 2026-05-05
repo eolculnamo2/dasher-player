@@ -10,6 +10,7 @@
     "format:check": "oxfmt --check"
   },
   "dependencies": {
+    "@effect/platform": "^0.96.1",
     "effect": "^3.21.2"
   },
   "devDependencies": {
