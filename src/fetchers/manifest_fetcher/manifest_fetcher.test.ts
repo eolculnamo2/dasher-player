@@ -20,17 +20,13 @@ const makeRequestError = (cause: unknown) =>
     cause,
   });
 
-const makeClient = (
-  get: HttpClient.HttpClient["get"],
-): HttpClient.HttpClient =>
+const makeClient = (get: HttpClient.HttpClient["get"]): HttpClient.HttpClient =>
   ({
     get,
   }) as unknown as HttpClient.HttpClient;
 
 const fetchWithClient = (client: HttpClient.HttpClient) =>
-  ManifestFetcher.fetch(url).pipe(
-    Effect.provideService(HttpClient.HttpClient, client),
-  );
+  ManifestFetcher.fetch(url).pipe(Effect.provideService(HttpClient.HttpClient, client));
 
 const runEither = <A, E>(effect: Effect.Effect<A, E, never>) =>
   Effect.runPromise(Effect.either(effect));
@@ -52,7 +48,7 @@ describe("ManifestFetcher.fetch", () => {
       Effect.suspend(() => {
         requestedUrls.push(requestUrl);
         return Effect.succeed(makeResponse("manifest-body"));
-      })
+      }),
     );
 
     const result = await Effect.runPromise(fetchWithClient(client));
@@ -72,7 +68,7 @@ describe("ManifestFetcher.fetch", () => {
         }
 
         return Effect.succeed(makeResponse("manifest-after-retry"));
-      })
+      }),
     );
 
     const result = await runTestClockEither(fetchWithClient(client));
@@ -90,7 +86,7 @@ describe("ManifestFetcher.fetch", () => {
       Effect.suspend(() => {
         attempts += 1;
         return Effect.succeed(makeResponse("service unavailable", 503));
-      })
+      }),
     );
 
     const result = await runTestClockEither(fetchWithClient(client));
@@ -113,7 +109,7 @@ describe("ManifestFetcher.fetch", () => {
       Effect.suspend(() => {
         attempts += 1;
         return Effect.succeed(makeResponse("not found", 404));
-      })
+      }),
     );
 
     const result = await runEither(fetchWithClient(client));
@@ -138,7 +134,7 @@ describe("ManifestFetcher.fetch", () => {
       Effect.suspend(() => {
         attempts += 1;
         return Effect.fail(requestError);
-      })
+      }),
     );
 
     const result = await runEither(fetchWithClient(client));

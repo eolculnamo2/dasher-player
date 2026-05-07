@@ -1,9 +1,23 @@
-import { Data, Duration, Effect, Fiber } from "effect";
+import { Brand, Data, Duration, Effect, Fiber } from "effect";
 import type { Scope } from "effect/Scope";
 
 export namespace MediaSourceModule {
+  // naming this opened because it was opened at one point in the past (at construction), but may not stay that way.
+  // The useful guarantee is that we've tracked it's initial source open even if we have to check readyState elsewhere
+  export namespace OpenedMediaSource {
+    export type Type = MediaSource & Brand.Brand<"OpenMediaSource">;
+    export const validate = Brand.refined<Type>(
+      (raw) => raw instanceof MediaSource && raw.readyState === "open",
+      (raw) =>
+        raw instanceof MediaSource
+          ? Brand.error(`MediaSource is not open, but is ${raw.readyState}`)
+          : Brand.error("MediaSource is not open"),
+    );
+    export const make = (mediaSource: MediaSource): Type => validate(mediaSource);
+    export const isStillOpen = (self: Type) => self.readyState === "open";
+  }
   export interface InitReturn {
-    mediaSource: MediaSource;
+    mediaSource: OpenedMediaSource.Type;
     mediaElement: HTMLMediaElement;
   }
 
@@ -127,7 +141,7 @@ export namespace MediaSourceModule {
       yield* Effect.logDebug("MediaSource initialized");
 
       return {
-        mediaSource,
+        mediaSource: OpenedMediaSource.make(mediaSource),
         mediaElement: mountedMediaElement,
       };
     }).pipe(

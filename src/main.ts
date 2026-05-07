@@ -4,11 +4,13 @@ import { BootstrapOrchestrator } from "@/src/lifecycle/init/bootstrap_orchestrat
 import { FetchHttpClient } from "@effect/platform";
 
 export const make = (params: Dasher.Params.T) =>
-  Effect.gen(function*() {
-    const validatedParams = Dasher.Params.validate(params);
-    const bootstrap = yield* BootstrapOrchestrator.make(validatedParams);
-    Effect.logDebug("Bootstrap complete");
-  }).pipe(Effect.provide(FetchHttpClient.layer));
+  Effect.scoped(
+    Effect.gen(function* () {
+      const validatedParams = Dasher.Params.validate(params);
+      const bootstrap = yield* BootstrapOrchestrator.make(validatedParams);
+      Effect.logDebug("Bootstrap complete");
+    }),
+  ).pipe(Effect.provide(FetchHttpClient.layer));
 
 export const init = (params: Dasher.Params.T) => {
   Effect.runSync(make(params));

@@ -1,90 +1,73 @@
 // @ts-expect-error mpd-parser does not ship types
 import { parse } from "mpd-parser";
-import { Effect } from "effect";
+import { Data, Effect } from "effect";
 import type * as ParseResult from "effect/ParseResult";
 import * as Schema from "effect/Schema";
+import { Codec } from "../codec/codec";
+import { RecommendedBitratePolicy } from "@/src/policy/recommended_bitrate_policy/recommended_bitrate_policy";
 
-export type DashSegmentMap = {
-  uri: string;
-  resolvedUri?: string;
-};
+export namespace DashManifest {
+  export const DashSegmentMap = Schema.Struct({
+    uri: Schema.String,
+    resolvedUri: Schema.optional(Schema.String),
+  });
 
-export const DashSegmentMap: Schema.Schema<DashSegmentMap> = Schema.Struct({
-  uri: Schema.String,
-  resolvedUri: Schema.optional(Schema.String),
-});
+  export type DashSegmentMap = typeof DashSegmentMap.Type;
 
-export type DashSegment = {
-  uri: string;
-  resolvedUri?: string;
-  duration: number;
-  map?: DashSegmentMap;
-  number?: number;
-  presentationTime?: number;
-};
+  export const DashSegment = Schema.Struct({
+    uri: Schema.String,
+    resolvedUri: Schema.optional(Schema.String),
+    duration: Schema.Number,
+    map: Schema.optional(DashSegmentMap),
+    number: Schema.optional(Schema.Number),
+    presentationTime: Schema.optional(Schema.Number),
+  });
 
-export const DashSegment: Schema.Schema<DashSegment> = Schema.Struct({
-  uri: Schema.String,
-  resolvedUri: Schema.optional(Schema.String),
-  duration: Schema.Number,
-  map: Schema.optional(DashSegmentMap),
-  number: Schema.optional(Schema.Number),
-  presentationTime: Schema.optional(Schema.Number),
-});
+  export type DashSegment = typeof DashSegment.Type;
 
-export type DashPlaylistAttributes = Record<string, unknown> & {
-  NAME?: string;
-  AUDIO?: string;
-  CODECS?: string;
-  BANDWIDTH?: number;
-};
-
-export const DashPlaylistAttributes = Schema.asSchema(
-  Schema.Struct({
-    NAME: Schema.optional(Schema.String),
-    AUDIO: Schema.optional(Schema.String),
-    CODECS: Schema.optional(Schema.String),
-    BANDWIDTH: Schema.optional(Schema.Number),
-  }).pipe(
-    Schema.extend(
-      Schema.Record({
-        key: Schema.String,
-        value: Schema.Unknown,
+  export const PlaylistAttributes = Schema.asSchema(
+    Schema.Struct({
+      NAME: Schema.optional(Schema.String),
+      AUDIO: Schema.optional(Schema.String),
+      CODECS: Schema.optional(Schema.String),
+      BANDWIDTH: Schema.Number,
+      RESOLUTION: Schema.Struct({
+        width: Schema.Number,
+        height: Schema.Number,
       }),
+    }).pipe(
+      Schema.extend(
+        Schema.Record({
+          key: Schema.String,
+          value: Schema.Unknown,
+        }),
+      ),
     ),
-  ),
-) as Schema.Schema<DashPlaylistAttributes>;
+  );
 
-export type DashPlaylist = {
-  uri: string;
-  resolvedUri?: string;
-  endList: boolean;
-  segments: DashSegment[];
-  attributes: DashPlaylistAttributes;
-};
+  export type PlaylistAttributes = typeof PlaylistAttributes.Type;
 
-export const DashPlaylist = Schema.Struct({
-  uri: Schema.String,
-  resolvedUri: Schema.optional(Schema.String),
-  endList: Schema.Boolean,
-  segments: Schema.mutable(Schema.Array(DashSegment)),
-  attributes: DashPlaylistAttributes,
-}) as Schema.Schema<DashPlaylist>;
+  export const Playlist = Schema.Struct({
+    uri: Schema.String,
+    resolvedUri: Schema.optional(Schema.String),
+    endList: Schema.Boolean,
+    segments: Schema.mutable(Schema.Array(DashSegment)),
+    attributes: PlaylistAttributes,
+  });
 
-export type DashMediaGroupRendition = {
-  default?: boolean;
-  autoselect?: boolean;
-  playlists?: DashPlaylist[];
-};
+  export type Playlist = typeof Playlist.Type;
 
-export const DashMediaGroupRendition = Schema.Struct({
-  default: Schema.optional(Schema.Boolean),
-  autoselect: Schema.optional(Schema.Boolean),
-  playlists: Schema.optional(Schema.mutable(Schema.Array(DashPlaylist))),
-}) as Schema.Schema<DashMediaGroupRendition>;
+  export const DashMediaGroupRendition = Schema.Struct({
+    default: Schema.optional(Schema.Boolean),
+    autoselect: Schema.optional(Schema.Boolean),
+    playlists: Schema.optional(Schema.mutable(Schema.Array(Playlist))),
+  });
 
-const MediaGroupRenditions: Schema.Schema<Record<string, Record<string, DashMediaGroupRendition>>> =
-  Schema.Record({
+  export type DashMediaGroupRendition = typeof DashMediaGroupRendition.Type;
+
+  const MediaGroupRenditions: Schema.Schema<
+    Record<string, Record<string, DashMediaGroupRendition>>
+  > = Schema.Record({
     key: Schema.String,
     value: Schema.Record({
       key: Schema.String,
@@ -92,47 +75,55 @@ const MediaGroupRenditions: Schema.Schema<Record<string, Record<string, DashMedi
     }),
   });
 
-export type Manifest = {
-  allowCache: boolean;
-  endList: boolean;
-  mediaSequence?: number;
-  discontinuitySequence?: number;
-  playlistType?: string;
-  playlists: DashPlaylist[];
-  mediaGroups: {
-    AUDIO: Record<string, Record<string, DashMediaGroupRendition>>;
-    VIDEO: Record<string, Record<string, DashMediaGroupRendition>>;
-    "CLOSED-CAPTIONS": Record<string, Record<string, DashMediaGroupRendition>>;
-    SUBTITLES: Record<string, Record<string, DashMediaGroupRendition>>;
+  export type Manifest = {
+    allowCache: boolean;
+    endList: boolean;
+    mediaSequence?: number;
+    discontinuitySequence?: number;
+    playlistType?: string;
+    playlists: Playlist[];
+    mediaGroups: {
+      AUDIO: Record<string, Record<string, DashMediaGroupRendition>>;
+      VIDEO: Record<string, Record<string, DashMediaGroupRendition>>;
+      "CLOSED-CAPTIONS": Record<string, Record<string, DashMediaGroupRendition>>;
+      SUBTITLES: Record<string, Record<string, DashMediaGroupRendition>>;
+    };
+    dateTimeString?: string;
+    dateTimeObject?: Date;
+    targetDuration?: number;
+    duration: number;
+    discontinuityStarts: number[];
   };
-  dateTimeString?: string;
-  dateTimeObject?: Date;
-  targetDuration?: number;
-  duration: number;
-  discontinuityStarts: number[];
-};
 
-export const Manifest = Schema.Struct({
-  allowCache: Schema.Boolean,
-  endList: Schema.Boolean,
-  mediaSequence: Schema.optional(Schema.Number),
-  discontinuitySequence: Schema.optional(Schema.Number),
-  playlistType: Schema.optional(Schema.String),
-  playlists: Schema.mutable(Schema.Array(DashPlaylist)),
-  mediaGroups: Schema.Struct({
-    AUDIO: MediaGroupRenditions,
-    VIDEO: MediaGroupRenditions,
-    "CLOSED-CAPTIONS": MediaGroupRenditions,
-    SUBTITLES: MediaGroupRenditions,
-  }),
-  dateTimeString: Schema.optional(Schema.String),
-  dateTimeObject: Schema.optional(Schema.DateFromSelf),
-  targetDuration: Schema.optional(Schema.Number),
-  duration: Schema.Number,
-  discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
-}) as Schema.Schema<Manifest>;
+  export const Manifest = Schema.Struct({
+    allowCache: Schema.Boolean,
+    endList: Schema.Boolean,
+    mediaSequence: Schema.optional(Schema.Number),
+    discontinuitySequence: Schema.optional(Schema.Number),
+    playlistType: Schema.optional(Schema.String),
+    playlists: Schema.mutable(Schema.Array(Playlist)),
+    mediaGroups: Schema.Struct({
+      AUDIO: MediaGroupRenditions,
+      VIDEO: MediaGroupRenditions,
+      "CLOSED-CAPTIONS": MediaGroupRenditions,
+      SUBTITLES: MediaGroupRenditions,
+    }),
+    dateTimeString: Schema.optional(Schema.String),
+    dateTimeObject: Schema.optional(Schema.DateFromSelf),
+    targetDuration: Schema.optional(Schema.Number),
+    duration: Schema.Number,
+    discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
+  }) as Schema.Schema<Manifest>;
+  export type Type = typeof Manifest.Type;
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
 
-export namespace DashManifest {
   export const make = (raw: string): Effect.Effect<Manifest, ParseResult.ParseError> =>
     Effect.suspend(() => Schema.decodeUnknown(Manifest)(parse(raw)));
+
+  export const codecByPlaylist = (playlist: Playlist): Codec.Type =>
+    Codec.make(playlist.attributes.CODECS);
+
+  // need ot figure out how mpd-parser does video vs audio adaptations although with playlists, they might just be combined
+  export const getRecommendedVideoPlaylist = (self: Type, mediaElement: HTMLMediaElement): Playlist =>
+    RecommendedBitratePolicy.chooseStartupRepresentation(self.playlists, mediaElement);
 }

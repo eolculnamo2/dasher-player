@@ -3,34 +3,30 @@ import { MediaSourceModule } from "@/src/domain/media_source/media_source";
 import type { Dasher } from "@/src/lifecycle/init/dasher_init_params";
 import { ManifestFetcher } from "@/src/fetchers/manifest_fetcher/manifest_fetcher";
 import { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
+import { SourceBufferModule } from "@/src/domain/source_buffer/source_buffer";
 
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        // this is where we need to think for a moment >> What should happen and in what order.
-        
-        /// We may consider using fibers to parallelize MediaSource construction, manifest fetch
-        /// and potentially others
+    Effect.gen(function*() {
+      /// We may consider using fibers to parallelize MediaSource construction, manifest fetch
+      /// and potentially others
 
-        // We at least need to construct media source
-        const mediaSource = yield* MediaSourceModule.make(params.mediaElement); // handle errors
+      // Create media source
+      const { mediaSource } = yield* MediaSourceModule.make(params.mediaElement); // handle errors
 
-        // Fetch dash manifest
-        const manifestTxt = yield* ManifestFetcher.fetch(params.manifestUrl);
+      // Fetch dash manifest
+      const manifestTxt = yield* ManifestFetcher.fetch(params.manifestUrl);
 
-        // Parse dash manifest
-        const manifest = yield* DashManifest.make(manifestTxt);
+      // Parse dash manifest
+      const manifest = yield* DashManifest.make(manifestTxt);
 
-        // create source buffer
+      // Find recommended playlist (video only for now)
+      const recommendedPlaylist = DashManifest.getRecommendedVideoPlaylist(manifest, params.mediaElement);
 
-        // We should initialize state
-
-        // Estimate bandwidth for initial ABR ladder
-
-        // Finally, get the Buffer (TM) to start fetching segments.
-
-        // Only some of these need done for "just getting it working" stage of all this
-      }),
-    );
+      // create source buffer
+      const sourceBuffer = yield* SourceBufferModule.make({
+        mediaSource,
+        codec: DashManifest.codecByPlaylist(recommendedPlaylist),
+      });
+    });
 }
