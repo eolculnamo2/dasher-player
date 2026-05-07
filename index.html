@@ -10,11 +10,13 @@
   <body>
     <div id="app"></div>
     <script type="module">
-      import { Dasher } from "/src/main.ts";
-      Dasher.make(document.getElementById("dasher-test-vid"), {
+      import * as Dasher from "./build/main.js";
+      Dasher.init({
+        mediaElement: document.getElementById("dasher-test-vid"),
         manifestUrl:
           "https://lib.resi.media/39d4f22d-5bb8-487f-8847-92ef285fd5f0/3db45bdd-9f9c-11f0-9442-119c15a2b3b7/Manifest-1761924649.mpd",
-      }).then((player) => player.load());
+      });
+      // }).then((player) => player.load());
     </script>
   </body>
 </html>

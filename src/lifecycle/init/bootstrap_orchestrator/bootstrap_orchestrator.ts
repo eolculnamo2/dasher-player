@@ -8,8 +8,8 @@ import { SourceBufferModule } from "@/src/domain/source_buffer/source_buffer";
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T) =>
     Effect.gen(function*() {
-      /// We may consider using fibers to parallelize MediaSource construction, manifest fetch
-      /// and potentially others
+      // We may consider using fibers to parallelize MediaSource construction, manifest fetch
+      // and potentially others
 
       // Create media source
       const { mediaSource } = yield* MediaSourceModule.make(params.mediaElement); // handle errors
@@ -28,5 +28,11 @@ export namespace BootstrapOrchestrator {
         mediaSource,
         codec: DashManifest.codecByPlaylist(recommendedPlaylist),
       });
+
+      return {
+        sourceBuffer,
+        mediaSource,
+        manifest,
+      }
     });
 }

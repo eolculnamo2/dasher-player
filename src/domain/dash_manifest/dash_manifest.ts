@@ -1,7 +1,7 @@
 // @ts-expect-error mpd-parser does not ship types
 import { parse } from "mpd-parser";
 import { Data, Effect } from "effect";
-import type * as ParseResult from "effect/ParseResult";
+import * as ParseResult from "effect/ParseResult";
 import * as Schema from "effect/Schema";
 import { Codec } from "../codec/codec";
 import { RecommendedBitratePolicy } from "@/src/policy/recommended_bitrate_policy/recommended_bitrate_policy";
@@ -27,14 +27,14 @@ export namespace DashManifest {
 
   export const PlaylistAttributes = Schema.asSchema(
     Schema.Struct({
-      NAME: Schema.optional(Schema.String),
-      AUDIO: Schema.optional(Schema.String),
+      // NAME: Schema.optional(Schema.String),
+      // AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
-      BANDWIDTH: Schema.Number,
-      RESOLUTION: Schema.Struct({
+      BANDWIDTH: Schema.optional(Schema.Number),
+      RESOLUTION: Schema.optional(Schema.Struct({
         width: Schema.Number,
         height: Schema.Number,
-      }),
+      })),
     }).pipe(
       Schema.extend(
         Schema.Record({
@@ -115,13 +115,17 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
 
   export const make = (raw: string): Effect.Effect<Manifest, ParseResult.ParseError> =>
-    Effect.suspend(() => Schema.decodeUnknown(Manifest)(parse(raw)));
+    Effect.suspend(() =>
+      Schema.decodeUnknown(Manifest)(parse(raw)).pipe(
+        Effect.tapError((error) => Effect.logError(ParseResult.TreeFormatter.formatErrorSync(error))),
+      ),
+    );
 
   export const codecByPlaylist = (playlist: Playlist): Codec.Type =>
-    Codec.make(playlist.attributes.CODECS);
+    Codec.makeVideo(playlist.attributes.CODECS);
 
   // need ot figure out how mpd-parser does video vs audio adaptations although with playlists, they might just be combined
   export const getRecommendedVideoPlaylist = (self: Type, mediaElement: HTMLMediaElement): Playlist =>
