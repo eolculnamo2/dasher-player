@@ -11,7 +11,7 @@ export namespace SourceBufferModule {
     if (!MediaSourceModule.OpenedMediaSource.isStillOpen(mediaSource)) {
       throw new Error("Invariant violation: MediaSource unexpectedly closed during bootstrapping");
     }
-    const sourceBuffer = mediaSource.addSourceBuffer(Codec.asMimeType('video/mp4', codec));
+    const sourceBuffer = mediaSource.addSourceBuffer(Codec.asMimeType("video/mp4", codec));
     return Effect.succeed(sourceBuffer);
   };
 }

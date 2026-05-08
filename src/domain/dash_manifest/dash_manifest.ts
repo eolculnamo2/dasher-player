@@ -31,10 +31,12 @@ export namespace DashManifest {
       // AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
       BANDWIDTH: Schema.optional(Schema.Number),
-      RESOLUTION: Schema.optional(Schema.Struct({
-        width: Schema.Number,
-        height: Schema.Number,
-      })),
+      RESOLUTION: Schema.optional(
+        Schema.Struct({
+          width: Schema.Number,
+          height: Schema.Number,
+        }),
+      ),
     }).pipe(
       Schema.extend(
         Schema.Record({
@@ -115,12 +117,14 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
 
   export const make = (raw: string): Effect.Effect<Manifest, ParseResult.ParseError> =>
     Effect.suspend(() =>
       Schema.decodeUnknown(Manifest)(parse(raw)).pipe(
-        Effect.tapError((error) => Effect.logError(ParseResult.TreeFormatter.formatErrorSync(error))),
+        Effect.tapError((error) =>
+          Effect.logError(ParseResult.TreeFormatter.formatErrorSync(error)),
+        ),
       ),
     );
 
@@ -128,6 +132,8 @@ export namespace DashManifest {
     Codec.makeVideo(playlist.attributes.CODECS);
 
   // need ot figure out how mpd-parser does video vs audio adaptations although with playlists, they might just be combined
-  export const getRecommendedVideoPlaylist = (self: Type, mediaElement: HTMLMediaElement): Playlist =>
-    RecommendedBitratePolicy.chooseStartupRepresentation(self.playlists, mediaElement);
+  export const getRecommendedVideoPlaylist = (
+    self: Type,
+    mediaElement: HTMLMediaElement,
+  ): Playlist => RecommendedBitratePolicy.chooseStartupRepresentation(self.playlists, mediaElement);
 }

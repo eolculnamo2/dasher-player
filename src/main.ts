@@ -5,11 +5,11 @@ import { FetchHttpClient } from "@effect/platform";
 
 const make = (params: Dasher.Params.T) =>
   Effect.scoped(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const validatedParams = Dasher.Params.validate(params);
       const bootstrap = yield* BootstrapOrchestrator.make(validatedParams);
       Effect.logDebug("Bootstrap complete");
-      console.log(bootstrap)
+      console.log(bootstrap);
     }),
   ).pipe(Effect.provide(FetchHttpClient.layer));
 

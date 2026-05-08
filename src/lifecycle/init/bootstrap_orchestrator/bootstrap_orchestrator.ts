@@ -7,12 +7,12 @@ import { SourceBufferModule } from "@/src/domain/source_buffer/source_buffer";
 
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // We may consider using fibers to parallelize MediaSource construction, manifest fetch
       // and potentially others
 
       // Create media source
-      const { mediaSource } = yield* MediaSourceModule.make(params.mediaElement); // handle errors
+      const { mediaSource } = yield* MediaSourceModule.make(params.mediaElement);
 
       // Fetch dash manifest
       const manifestTxt = yield* ManifestFetcher.fetch(params.manifestUrl);
@@ -21,7 +21,10 @@ export namespace BootstrapOrchestrator {
       const manifest = yield* DashManifest.make(manifestTxt);
 
       // Find recommended playlist (video only for now)
-      const recommendedPlaylist = DashManifest.getRecommendedVideoPlaylist(manifest, params.mediaElement);
+      const recommendedPlaylist = DashManifest.getRecommendedVideoPlaylist(
+        manifest,
+        params.mediaElement,
+      );
 
       // create source buffer
       const sourceBuffer = yield* SourceBufferModule.make({
@@ -33,6 +36,6 @@ export namespace BootstrapOrchestrator {
         sourceBuffer,
         mediaSource,
         manifest,
-      }
+      };
     });
 }
