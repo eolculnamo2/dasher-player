@@ -18,7 +18,7 @@ export namespace DashManifest {
     uri: Schema.String,
     resolvedUri: Schema.optional(Schema.String),
     duration: Schema.Number,
-    map: Schema.optional(DashSegmentMap),
+    map: DashSegmentMap,
     number: Schema.optional(Schema.Number),
     presentationTime: Schema.optional(Schema.Number),
   });
@@ -30,13 +30,11 @@ export namespace DashManifest {
       // NAME: Schema.optional(Schema.String),
       // AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
-      BANDWIDTH: Schema.optional(Schema.Number),
-      RESOLUTION: Schema.optional(
-        Schema.Struct({
-          width: Schema.Number,
-          height: Schema.Number,
-        }),
-      ),
+      BANDWIDTH: Schema.Number,
+      RESOLUTION: Schema.Struct({
+        width: Schema.Number,
+        height: Schema.Number,
+      }),
     }).pipe(
       Schema.extend(
         Schema.Record({
@@ -127,6 +125,16 @@ export namespace DashManifest {
         ),
       ),
     );
+
+  export const getPlaylistByHeight = (self: Type, height: number): Playlist => {
+    const playlist = self.playlists.find(
+      (p) => p.attributes.RESOLUTION?.height && p.attributes.RESOLUTION.height === height,
+    );
+    if (!playlist) {
+      throw new Error(`Invariant violation: No playlist with height ${height} provided`);
+    }
+    return playlist;
+  };
 
   export const codecByPlaylist = (playlist: Playlist): Codec.Type =>
     Codec.makeVideo(playlist.attributes.CODECS);

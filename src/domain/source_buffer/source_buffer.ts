@@ -7,6 +7,7 @@ export namespace SourceBufferModule {
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     codec: Codec.Type;
   }) => Effect.Effect<SourceBuffer>;
+  export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, codec }) => {
     if (!MediaSourceModule.OpenedMediaSource.isStillOpen(mediaSource)) {
       throw new Error("Invariant violation: MediaSource unexpectedly closed during bootstrapping");
@@ -14,4 +15,9 @@ export namespace SourceBufferModule {
     const sourceBuffer = mediaSource.addSourceBuffer(Codec.asMimeType("video/mp4", codec));
     return Effect.succeed(sourceBuffer);
   };
+
+  // this is happy path only right now until we get a working video poc
+  export const attachSegment = (self: Type, segment: ArrayBuffer) => Effect.gen(function*() {
+    self.appendBuffer(segment);
+  });
 }

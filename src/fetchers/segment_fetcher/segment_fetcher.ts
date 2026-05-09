@@ -1,7 +1,7 @@
 // tuning should lean aggressive. If a segment isn't working, we'll just grab another one off the ABR ladder
 
 import { Data, Duration, Effect, Schedule } from "effect";
-import { HttpClient, HttpClientResponse } from "@effect/platform";
+import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platform";
 import type { SegmentUrl } from "@/src/domain/segment_url/segment_url";
 
 export namespace SegmentFetcher {
@@ -20,7 +20,11 @@ export namespace SegmentFetcher {
     timeoutMs: number;
   }> {}
 
-  export type SegmentError = RetryableSegmentError | NonRetryableSegmentError | SegmentTimeoutError;
+  export type SegmentError =
+    | HttpClientError.HttpClientError
+    | RetryableSegmentError
+    | NonRetryableSegmentError
+    | SegmentTimeoutError;
 
   const DEFAULT_SEGMENT_TIMEOUT = Duration.seconds(5);
   export const fetch = (url: SegmentUrl.Type) =>

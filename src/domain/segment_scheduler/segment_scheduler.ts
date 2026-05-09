@@ -2,10 +2,10 @@
 // SegmentSchedulers job is to get segments and return them back using SegmentFetcher
 // also has to track state of pending requests between calls (this is going to be in 100ms loop)
 
-import type { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
+import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import type { SegmentUrl } from "../segment_url/segment_url";
 import { Duration, Effect } from "effect";
-import type { DashManifest } from "../dash_manifest/dash_manifest";
+import { DashManifest } from "../dash_manifest/dash_manifest";
 
 // also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
@@ -17,12 +17,9 @@ export namespace SegmentScheduler {
   export type Type = {
     fetchMap: Map<SegmentUrl.Type, SegmentStatus.Type>;
   };
-
-  export const make = (): Type => {
-    return {
-      fetchMap: new Map<SegmentUrl.Type, SegmentStatus.Type>(),
-    };
-  };
+  export const make = () => ({
+    fetchMap: new Map<SegmentUrl.Type, SegmentStatus.Type>(),
+  });
 
   export type TickParams = {
     manifest: DashManifest.Type;
@@ -31,7 +28,7 @@ export namespace SegmentScheduler {
 
   export const tick = (self: Type, { requested }: TickParams): Effect.Effect<Type> => {
     for (const request of requested) {
-       
+
     }
     return Effect.succeed(self);
   };
