@@ -22,6 +22,7 @@ export namespace SegmentQueue {
 
   export const add = (self: Type, next: Queued) =>
     Effect.gen(function* () {
+      console.log('added')
       yield* Queue.offer(self.queue, next);
     });
 

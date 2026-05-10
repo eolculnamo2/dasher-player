@@ -13,13 +13,11 @@ export namespace SourceBufferModule {
       throw new Error("Invariant violation: MediaSource unexpectedly closed during bootstrapping");
     }
 
-    const sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+    const sourceBuffer = mediaSource.addSourceBuffer(Codec.MimeType.toString(mimeType));
     return Effect.succeed(sourceBuffer);
   };
 
   // this is happy path only right now until we get a working video poc
   export const attachSegment = (self: Type, segment: ArrayBuffer) =>
-    Effect.gen(function*() {
-      self.appendBuffer(segment);
-    });
+    self.appendBuffer(segment);
 }

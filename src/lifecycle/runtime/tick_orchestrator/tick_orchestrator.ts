@@ -18,6 +18,8 @@ export namespace TickOrchestrator {
       // may move this.. just reminding myself why i brought media element in
       const currentTime = mediaElement.currentTime;
 
+      const derp = [...buffer.buffers.keys()][0]!
+      yield* BufferManager.flushSegmentQueue(buffer, derp, segmentQueue);
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 
       yield* SegmentScheduler.tick(scheduler, { manifest, recommendedPlaylist, requested: bufferBehindMap, currentTime, segmentQueue });

@@ -4,7 +4,7 @@
 
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import type { SegmentUrl } from "../segment_url/segment_url";
-import { Effect, Fiber } from "effect";
+import { Effect } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 import { SegmentQueue } from "../segment_queue/segment_queue";
@@ -28,7 +28,7 @@ export namespace SegmentScheduler {
     segmentQueue: SegmentQueue.Type;
     // preferredPlaylist: { height: number; bandwidth: number };
     recommendedPlaylist: DashManifest.Playlist;
-    requested: Map<Codec.Type, number>;
+    requested: Map<Codec.MimeType.Type, number>;
     currentTime: number;
   };
 
@@ -41,7 +41,7 @@ export namespace SegmentScheduler {
   ) =>
     Effect.gen(function*() {
       const toFetch: Array<{
-        codec: Codec.Type;
+        mimeType: Codec.MimeType.Type;
         segment: DashManifest.DashSegment;
       }> = [];
       const preferredPlaylist = {
@@ -51,8 +51,7 @@ export namespace SegmentScheduler {
       console.log(requested);
       for (const [codec, neededBuffer] of requested) {
         // long term we dont want to rely on mime type prefix for this...
-        if (Codec.toString(codec).startsWith("video")) {
-          console.log(1)
+        if (Codec.MimeType.toString(codec).startsWith("video")) {
           const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
           const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
           if (!currentSegment) {
@@ -60,24 +59,25 @@ export namespace SegmentScheduler {
               `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${codec}`,
             );
           }
+          console.log({currentSegment})
           const segmentsToFetch = DashManifest.getSegmentsToFetch(
             playlist.segments,
-            currentSegment.number + 1,
+            currentSegment.number, 
             neededBuffer,
           );
 
-          console.log(2, segmentsToFetch);
           for (let i = 0; i < segmentsToFetch.length; i++) {
             const s = segmentsToFetch[i];
-            if (!s) {
+            if (!s || self.fetchMap.get(s.uri)) {
               continue;
             }
             self.fetchMap.set(s.uri, { kind: "loading" });
             toFetch.push({
-              codec,
-              // number: s.number,
+              mimeType: codec,
               segment: s,
             });
+            // adding this here for debugging!
+            break;
           }
         }
       }
@@ -90,16 +90,18 @@ export namespace SegmentScheduler {
             if (!pending.segment.resolvedUri) {
               Effect.logWarning('no resolved uri on fetch daemon');
             }
+            console.log('from fork')
             return SegmentFetcher.fetch(pending.segment.resolvedUri ?? '').pipe(
-              Effect.map((data) => {
-                SegmentQueue.add(segmentQueue, {
+              Effect.flatMap((data) => {
+                console.log('data!', data)
+                return SegmentQueue.add(segmentQueue, {
                   data,
                   segment: pending.segment,
                 });
               }),
             )
           },
-          { concurrency: 4 },
+          { concurrency: 1 },
         ),
       );
       return self;

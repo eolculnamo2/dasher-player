@@ -5,7 +5,7 @@ import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_schedul
 import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
 import { SegmentQueue } from "@/src/domain/segment_queue/segment_queue";
 
-const TICK_SLEEP = Duration.millis(1000);
+const TICK_SLEEP = Duration.millis(2500);
 
 export namespace RuntimeOrchestrator {
   type Params = {
@@ -15,7 +15,7 @@ export namespace RuntimeOrchestrator {
     recommendedPlaylist: DashManifest.Playlist;
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const segmentQueue = yield* SegmentQueue.make();
       const scheduler = SegmentScheduler.make();
 

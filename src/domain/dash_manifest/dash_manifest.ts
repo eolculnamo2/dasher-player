@@ -118,7 +118,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
 
   export const make = (
     raw: string,
@@ -168,7 +168,8 @@ export namespace DashManifest {
       result.push(segment);
       accumulated += segment.duration;
 
-      if (accumulated >= secondsNeeded) {
+      console.log({ accumulated, d: segment.duration })
+      if (accumulated > secondsNeeded) {
         break;
       }
     }
