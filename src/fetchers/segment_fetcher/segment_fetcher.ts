@@ -48,7 +48,6 @@ export namespace SegmentFetcher {
           ),
         }),
       );
-      // this isn't correct
       return yield* response.arrayBuffer;
     });
 

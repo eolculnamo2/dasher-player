@@ -4,8 +4,10 @@
 
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import type { SegmentUrl } from "../segment_url/segment_url";
-import { Duration, Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
+import { Codec } from "../codec/codec";
+import { SegmentQueue } from "../segment_queue/segment_queue";
 
 // also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
@@ -23,13 +25,83 @@ export namespace SegmentScheduler {
 
   export type TickParams = {
     manifest: DashManifest.Type;
-    requested: Array<{ start: Duration.DurationValue; end: Duration.DurationValue }>;
+    segmentQueue: SegmentQueue.Type;
+    // preferredPlaylist: { height: number; bandwidth: number };
+    recommendedPlaylist: DashManifest.Playlist;
+    requested: Map<Codec.Type, number>;
+    currentTime: number;
   };
 
-  export const tick = (self: Type, { requested }: TickParams): Effect.Effect<Type> => {
-    for (const request of requested) {
+  // this is where we can make the behavior slick.. i.e. can swap out hanging segments for different bitrate or multi cdn
+  // this is also a mess right now; I will go back and treat this like a nested, this orchestrator + properly decompose its pieces
+  // after i can prove that I can get video + audio working together for happy path
+  export const tick = (
+    self: Type,
+    { manifest, recommendedPlaylist, requested, currentTime, segmentQueue }: TickParams,
+  ) =>
+    Effect.gen(function*() {
+      const toFetch: Array<{
+        codec: Codec.Type;
+        segment: DashManifest.DashSegment;
+      }> = [];
+      const preferredPlaylist = {
+        height: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
+        bandwidth: recommendedPlaylist.attributes.BANDWIDTH,
+      }
+      console.log(requested);
+      for (const [codec, neededBuffer] of requested) {
+        // long term we dont want to rely on mime type prefix for this...
+        if (Codec.toString(codec).startsWith("video")) {
+          console.log(1)
+          const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
+          const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
+          if (!currentSegment) {
+            throw new Error(
+              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${codec}`,
+            );
+          }
+          const segmentsToFetch = DashManifest.getSegmentsToFetch(
+            playlist.segments,
+            currentSegment.number + 1,
+            neededBuffer,
+          );
 
-    }
-    return Effect.succeed(self);
-  };
+          console.log(2, segmentsToFetch);
+          for (let i = 0; i < segmentsToFetch.length; i++) {
+            const s = segmentsToFetch[i];
+            if (!s) {
+              continue;
+            }
+            self.fetchMap.set(s.uri, { kind: "loading" });
+            toFetch.push({
+              codec,
+              // number: s.number,
+              segment: s,
+            });
+          }
+        }
+      }
+      // next, push to queue inside daemon and then have buffer manager subscribe.
+      // we should have working video after this??? 🤞
+      yield* Effect.forkDaemon(
+        Effect.forEach(
+          toFetch,
+          (pending) => {
+            if (!pending.segment.resolvedUri) {
+              Effect.logWarning('no resolved uri on fetch daemon');
+            }
+            return SegmentFetcher.fetch(pending.segment.resolvedUri ?? '').pipe(
+              Effect.map((data) => {
+                SegmentQueue.add(segmentQueue, {
+                  data,
+                  segment: pending.segment,
+                });
+              }),
+            )
+          },
+          { concurrency: 4 },
+        ),
+      );
+      return self;
+    });
 }

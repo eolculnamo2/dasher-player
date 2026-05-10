@@ -5,6 +5,7 @@ import * as ParseResult from "effect/ParseResult";
 import * as Schema from "effect/Schema";
 import { Codec } from "../codec/codec";
 import { RecommendedBitratePolicy } from "@/src/policy/recommended_bitrate_policy/recommended_bitrate_policy";
+import type { ManifestUrl } from "../manifest_url/manifest_url";
 
 export namespace DashManifest {
   export const DashSegmentMap = Schema.Struct({
@@ -19,22 +20,24 @@ export namespace DashManifest {
     resolvedUri: Schema.optional(Schema.String),
     duration: Schema.Number,
     map: DashSegmentMap,
-    number: Schema.optional(Schema.Number),
-    presentationTime: Schema.optional(Schema.Number),
+    number: Schema.Number,
+    presentationTime: Schema.Number,
   });
 
   export type DashSegment = typeof DashSegment.Type;
 
   export const PlaylistAttributes = Schema.asSchema(
     Schema.Struct({
-      // NAME: Schema.optional(Schema.String),
-      // AUDIO: Schema.optional(Schema.String),
+      NAME: Schema.optional(Schema.String),
+      AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
       BANDWIDTH: Schema.Number,
-      RESOLUTION: Schema.Struct({
-        width: Schema.Number,
-        height: Schema.Number,
-      }),
+      RESOLUTION: Schema.optional(
+        Schema.Struct({
+          width: Schema.Number,
+          height: Schema.Number,
+        }),
+      ),
     }).pipe(
       Schema.extend(
         Schema.Record({
@@ -117,9 +120,12 @@ export namespace DashManifest {
   export type Type = typeof Manifest.Type;
   export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
 
-  export const make = (raw: string): Effect.Effect<Manifest, ParseResult.ParseError> =>
+  export const make = (
+    raw: string,
+    manifestUrl: ManifestUrl.T,
+  ): Effect.Effect<Manifest, ParseResult.ParseError> =>
     Effect.suspend(() =>
-      Schema.decodeUnknown(Manifest)(parse(raw)).pipe(
+      Schema.decodeUnknown(Manifest)(parse(raw, { manifestUri: manifestUrl })).pipe(
         Effect.tapError((error) =>
           Effect.logError(ParseResult.TreeFormatter.formatErrorSync(error)),
         ),
@@ -136,12 +142,46 @@ export namespace DashManifest {
     return playlist;
   };
 
-  export const codecByPlaylist = (playlist: Playlist): Codec.Type =>
-    Codec.makeVideo(playlist.attributes.CODECS);
+  export const mimeTypeByPlaylist = (playlist: Playlist): Codec.MimeType.Type =>
+    Codec.MimeType.fromCodec('video/mp4', Codec.makeVideo(playlist.attributes.CODECS));
 
   // need ot figure out how mpd-parser does video vs audio adaptations although with playlists, they might just be combined
   export const getRecommendedVideoPlaylist = (
     self: Type,
     mediaElement: HTMLMediaElement,
   ): Playlist => RecommendedBitratePolicy.chooseStartupRepresentation(self.playlists, mediaElement);
+
+  export const getSegmentsToFetch = (
+    segments: DashSegment[],
+    nextSegmentIndex: number,
+    secondsNeeded: number,
+  ): DashSegment[] => {
+    const result: DashSegment[] = [];
+    let accumulated = 0;
+
+    for (let i = nextSegmentIndex; i < segments.length; i++) {
+      const segment = segments[i];
+      if (!segment) {
+        continue;
+      }
+
+      result.push(segment);
+      accumulated += segment.duration;
+
+      if (accumulated >= secondsNeeded) {
+        break;
+      }
+    }
+
+    return result;
+  };
+
+  export const findCurrentSegment = (playlist: Playlist, currentTime: number) =>
+    playlist.segments.find((p) => {
+      if (p.presentationTime == null) {
+        Effect.logWarning(`presentation time is missing for segment ${p.number}`);
+        return false;
+      }
+      return p.presentationTime <= currentTime && p.duration + p.presentationTime >= currentTime;
+    });
 }
