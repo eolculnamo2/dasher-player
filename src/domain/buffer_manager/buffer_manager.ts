@@ -20,7 +20,7 @@ export namespace BufferManager {
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     mimeType: Codec.MimeType.Type;
     manifest: DashManifest.Type;
-    sourceBuffer: SourceBuffer,
+    sourceBuffer: SourceBuffer;
     playlistHeight: number;
   };
   type CreateAudioBufferParams = {
@@ -28,7 +28,7 @@ export namespace BufferManager {
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     mimeType: Codec.MimeType.Type;
     manifest: DashManifest.Type;
-    sourceBuffer: SourceBuffer,
+    sourceBuffer: SourceBuffer;
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
@@ -53,7 +53,7 @@ export namespace BufferManager {
       const initUrl = playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
-        console.log('mising init url');
+        console.log("mising init url");
         return yield* Effect.fail(new MissingInitSegmentUrl());
       }
 
@@ -61,7 +61,7 @@ export namespace BufferManager {
 
       SourceBufferModule.attachSegment(params.sourceBuffer, initSegment);
       console.log(`registered ${params.mimeType} to buffer manager`);
-      yield* Effect.logDebug(`registered ${params.mimeType} to buffer manager`)
+      yield* Effect.logDebug(`registered ${params.mimeType} to buffer manager`);
       self.buffers.set(params.mimeType, params.sourceBuffer);
       return params.sourceBuffer;
     });
@@ -99,7 +99,7 @@ export namespace BufferManager {
       });
 
       if (audioCodec) {
-       yield* BufferManager.createBuffer(self, {
+        yield* BufferManager.createBuffer(self, {
           kind: "audio",
           mediaSource,
           manifest,

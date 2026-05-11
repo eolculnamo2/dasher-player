@@ -8,6 +8,8 @@ import { Effect } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 import { SegmentQueue } from "../segment_queue/segment_queue";
+import { VideoTick } from "./video-tick/video-tick";
+import { AudioTick } from "./audio-tick/audio-tick";
 
 // also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
@@ -26,7 +28,6 @@ export namespace SegmentScheduler {
   export type TickParams = {
     manifest: DashManifest.Type;
     segmentQueue: SegmentQueue.Type;
-    // preferredPlaylist: { height: number; bandwidth: number };
     recommendedPlaylist: DashManifest.Playlist;
     requested: Map<Codec.MimeType.Type, number>;
     currentTime: number;
@@ -39,79 +40,56 @@ export namespace SegmentScheduler {
     self: Type,
     { manifest, recommendedPlaylist, requested, currentTime, segmentQueue }: TickParams,
   ) =>
-    Effect.gen(function*() {
-      const toFetch: Array<{
-        mimeType: Codec.MimeType.Type;
-        segment: DashManifest.DashSegment;
-      }> = [];
+    Effect.gen(function* () {
       const preferredPlaylist = {
         height: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
         bandwidth: recommendedPlaylist.attributes.BANDWIDTH,
       };
-      for (const [mimeType, neededBuffer] of requested) {
-        // long term we dont want to rely on mime type prefix for this...
-        if (Codec.MimeType.toString(mimeType).startsWith("video")) {
-          const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
-          const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
-          if (!currentSegment) {
-            throw new Error(
-              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
-            );
-          }
-          const segmentsToFetch = DashManifest.getSegmentsToFetch(
-            playlist.segments,
-            currentSegment.number,
-            neededBuffer,
-          );
-
-          for (let i = 0; i < segmentsToFetch.length; i++) {
-            const s = segmentsToFetch[i];
-            if (!s || self.fetchMap.get(s.uri)) {
-              continue;
-            }
-            self.fetchMap.set(s.uri, { kind: "loading" });
-            toFetch.push({
+      const toFetch = Effect.all(
+        Array.from(requested.entries()).map(([mimeType, neededBuffer]) => {
+          if (Codec.MimeType.toString(mimeType).startsWith("video")) {
+            return VideoTick.handle({
+              manifest,
+              preferredPlaylist,
+              currentTime,
               mimeType,
-              segment: s,
+              neededBuffer,
             });
           }
-        }
-        if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
-          const playlist = DashManifest.getAudioPlaylist(manifest);
-          if (!playlist) {
-            Effect.logDebug("no audio playlist.. skipping");
-            continue;
+          if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
+            return AudioTick.handle({
+              manifest,
+              preferredPlaylist,
+              currentTime,
+              mimeType,
+              neededBuffer,
+            });
           }
-          const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
-          if (!currentSegment) {
-            throw new Error(
-              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
-            );
-          }
-          const segmentsToFetch = DashManifest.getSegmentsToFetch(
-            playlist.segments,
-            currentSegment.number,
-            neededBuffer,
-          );
-
-          for (let i = 0; i < segmentsToFetch.length; i++) {
-            const s = segmentsToFetch[i];
-            if (!s || self.fetchMap.get(s.uri)) {
-              continue;
+          return Effect.sync(() => ({
+            mimeType,
+            segments: []
+          }));
+        }),
+      ).pipe(
+        Effect.map((items) => items.map((item) => {
+          return item.segments.map((segment) => ({
+            mimeType: item.mimeType,
+            segment,
+          })).filter((item) => {
+            if (self.fetchMap.get(item.segment.uri)) {
+              return false;
             }
-            self.fetchMap.set(s.uri, { kind: "loading" });
-            toFetch.push({
-              mimeType: mimeType,
-              segment: s,
-            });
-          }
-        }
-      }
-      // next, push to queue inside daemon and then have buffer manager subscribe.
-      // we should have working video after this??? 🤞
+            self.fetchMap.set(item.segment.uri, { kind: "loading" });
+            return true;
+          })
+        })),
+        Effect.map((items) => items.flat())
+      );
+
+      const readyForFetch = yield* toFetch;
       yield* Effect.forkDaemon(
         Effect.forEach(
-          toFetch,
+          readyForFetch,
           (pending) => {
             if (!pending.segment.resolvedUri) {
               Effect.logWarning("no resolved uri on fetch daemon");

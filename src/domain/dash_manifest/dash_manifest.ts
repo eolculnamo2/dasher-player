@@ -130,7 +130,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
 
   export const make = (
     raw: string,

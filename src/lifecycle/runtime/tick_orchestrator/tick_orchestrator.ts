@@ -22,7 +22,6 @@ export namespace TickOrchestrator {
     scheduler,
   }: Params) =>
     Effect.gen(function* () {
-      // may move this.. just reminding myself why i brought media element in
       const currentTime = mediaElement.currentTime;
 
       yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentQueue);

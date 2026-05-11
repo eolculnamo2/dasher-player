@@ -1,15 +1,10 @@
 import { ManifestUrl } from "@/src/domain/manifest_url/manifest_url";
 
-// import type { DasherError } from "../domain/error";
-
 export namespace Dasher {
   export namespace Params {
     export type T = {
       mediaElement: HTMLMediaElement;
       manifestUrl: string;
-      // config?: {
-      //   manifest: ManifestFetcherConfig.T;
-      // }
     };
 
     export const validate = (raw: T): ValidatedParams.T => {
@@ -25,9 +20,6 @@ export namespace Dasher {
     export type T = {
       mediaElement: HTMLMediaElement;
       manifestUrl: ManifestUrl.T;
-      // config: {
     };
   }
-
-  // export type Error = DasherError.T;
 }

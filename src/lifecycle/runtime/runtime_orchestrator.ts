@@ -15,7 +15,7 @@ export namespace RuntimeOrchestrator {
     recommendedPlaylist: DashManifest.Playlist;
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const segmentQueue = yield* SegmentQueue.make();
       const scheduler = SegmentScheduler.make();
 
