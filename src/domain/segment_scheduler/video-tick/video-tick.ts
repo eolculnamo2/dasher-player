@@ -17,17 +17,23 @@ export namespace VideoTick {
     currentTime,
     mimeType,
     neededBuffer,
-  }: HandleParams) => {
-    const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
-    const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
-    if (!currentSegment) {
-      throw new Error(
-        `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
-      );
-    }
-    return Effect.sync(() =>({
-      mimeType,
-      segments: DashManifest.getSegmentsToFetch(playlist.segments, currentSegment.number, neededBuffer),
-    }));
-  };
+  }: HandleParams) =>
+    Effect.gen(function* () {
+      const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
+      const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
+      if (!currentSegment) {
+        throw new Error(
+          `Invariant violation: Unable to find current video segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
+        );
+      }
+
+      return {
+        mimeType,
+        segments: DashManifest.getSegmentsToFetch(
+          playlist.segments,
+          currentSegment.number,
+          neededBuffer,
+        ),
+      };
+    });
 }

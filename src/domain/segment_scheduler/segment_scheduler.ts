@@ -45,7 +45,7 @@ export namespace SegmentScheduler {
         height: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
         bandwidth: recommendedPlaylist.attributes.BANDWIDTH,
       };
-      const toFetch = Effect.all(
+      const segmentGroups = yield* Effect.all(
         Array.from(requested.entries()).map(([mimeType, neededBuffer]) => {
           if (Codec.MimeType.toString(mimeType).startsWith("video")) {
             return VideoTick.handle({
@@ -59,7 +59,6 @@ export namespace SegmentScheduler {
           if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
             return AudioTick.handle({
               manifest,
-              preferredPlaylist,
               currentTime,
               mimeType,
               neededBuffer,
@@ -67,26 +66,25 @@ export namespace SegmentScheduler {
           }
           return Effect.sync(() => ({
             mimeType,
-            segments: []
+            segments: [],
           }));
         }),
-      ).pipe(
-        Effect.map((items) => items.map((item) => {
-          return item.segments.map((segment) => ({
-            mimeType: item.mimeType,
-            segment,
-          })).filter((item) => {
-            if (self.fetchMap.get(item.segment.uri)) {
-              return false;
-            }
-            self.fetchMap.set(item.segment.uri, { kind: "loading" });
-            return true;
-          })
-        })),
-        Effect.map((items) => items.flat())
       );
 
-      const readyForFetch = yield* toFetch;
+      const readyForFetch: Array<{
+        mimeType: Codec.MimeType.Type;
+        segment: DashManifest.DashSegment;
+      }> = [];
+      for (const { mimeType, segments } of segmentGroups) {
+        for (const segment of segments) {
+          if (self.fetchMap.get(segment.uri)) {
+            continue;
+          }
+          self.fetchMap.set(segment.uri, { kind: "loading" });
+          readyForFetch.push({ mimeType, segment });
+        }
+      }
+
       yield* Effect.forkDaemon(
         Effect.forEach(
           readyForFetch,

@@ -9,23 +9,15 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> {}
+  }> { }
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
     if (!MediaSourceModule.OpenedMediaSource.isStillOpen(mediaSource)) {
       throw new Error("Invariant violation: MediaSource unexpectedly closed during bootstrapping");
     }
-
-    console.log("adding for ", Codec.MimeType.toString(mimeType));
-    console.log("BEFORE addSourceBuffer", {
-      mime: Codec.MimeType.toString(mimeType),
-      sourceBufferCount: mediaSource.sourceBuffers.length,
-      activeSourceBufferCount: mediaSource.activeSourceBuffers.length,
-      readyState: mediaSource.readyState,
-    });
     const sourceBuffer = mediaSource.addSourceBuffer(Codec.MimeType.toString(mimeType));
     return Effect.succeed(sourceBuffer);
   };

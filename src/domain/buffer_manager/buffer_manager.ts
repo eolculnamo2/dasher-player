@@ -9,7 +9,7 @@ import type { SegmentQueue } from "../segment_queue/segment_queue";
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(9);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -32,7 +32,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -53,15 +53,13 @@ export namespace BufferManager {
       const initUrl = playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
-        console.log("mising init url");
         return yield* Effect.fail(new MissingInitSegmentUrl());
       }
 
       const initSegment = yield* SegmentFetcher.fetch(initUrl);
 
       SourceBufferModule.attachSegment(params.sourceBuffer, initSegment);
-      console.log(`registered ${params.mimeType} to buffer manager`);
-      yield* Effect.logDebug(`registered ${params.mimeType} to buffer manager`);
+      yield* Effect.logInfo(`registered ${params.mimeType} to buffer manager`);
       self.buffers.set(params.mimeType, params.sourceBuffer);
       return params.sourceBuffer;
     });
@@ -76,7 +74,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, recommendedPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -135,9 +133,7 @@ export namespace BufferManager {
         return Math.max(0, end - currentTime);
       }
     }
-
-    // can probably improve handling this case
-    console.warn("failed to find buffer range; defaulting to 0");
+    // no buffer range exists yet (i.e. when first streaming segments)
     return 0;
   };
 
@@ -178,7 +174,7 @@ export namespace BufferManager {
     mimeTypes: MapIterator<Codec.MimeType.Type>,
     segmentQueue: SegmentQueue.Type,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
         Effect.map(Chunk.toArray),
         // keep an eye on this. It might cause weird problems later. It would be better to eventually strictly insert in order into the queue
@@ -192,7 +188,6 @@ export namespace BufferManager {
         }
         for (let i = 0; i < flushed.length; i++) {
           const f = flushed[i];
-          console.log(f?.mimeType, mimeType);
           if (f?.mimeType !== mimeType) {
             continue;
           }
