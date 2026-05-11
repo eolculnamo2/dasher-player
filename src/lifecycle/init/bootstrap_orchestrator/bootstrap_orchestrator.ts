@@ -20,13 +20,17 @@ export namespace BootstrapOrchestrator {
       // Parse dash manifest
       const manifest = yield* DashManifest.make(manifestTxt, params.manifestUrl);
 
+      // if more needs to happen here, move to the MediaSourceModule
+      if (manifest.duration) {
+        mediaSource.duration = manifest.duration;
+      }
+
       // Find recommended playlist (video only for now)
       const recommendedPlaylist = DashManifest.getRecommendedVideoPlaylist(
         manifest,
         params.mediaElement,
       );
 
-      console.log(manifest);
       // create source buffer
       const sourceBuffer = yield* BufferManager.createBuffer(params.bufferManager, {
         mediaSource,

@@ -112,7 +112,6 @@ export namespace BufferManager {
     const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
       Effect.map(Chunk.toArray),
       Effect.map(data => data.toSorted(d => d.segment.number > d.segment.number ? 1 : -1)));
-      console.log(flushed);
     const buffer = self.buffers.get(mimeType);
     if (!buffer) {
       throw new Error(`invariant violation - no buffer exists for mime type ${mimeType}`)
@@ -120,7 +119,9 @@ export namespace BufferManager {
     for (let i = 0; i < flushed.length; i++) {
       const f = flushed[i];
       if (!f) continue;
-      console.log('?');
+      if (buffer.updating) {
+        yield* SourceBufferModule.waitForUpdateEnd(buffer);
+      }
       attachSegment(buffer, f.data)
     }
   });

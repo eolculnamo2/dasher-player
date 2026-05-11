@@ -19,8 +19,6 @@ export namespace RuntimeOrchestrator {
       const segmentQueue = yield* SegmentQueue.make();
       const scheduler = SegmentScheduler.make();
 
-      // next up is appending init segment to buffer then getting happy path video segments working on a video
-
       while (true) {
         yield* TickOrchestrator.make({
           buffer: bufferManager,

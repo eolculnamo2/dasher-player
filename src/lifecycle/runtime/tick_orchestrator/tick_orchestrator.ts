@@ -14,7 +14,7 @@ export namespace TickOrchestrator {
     manifest: DashManifest.Type;
   };
   export const make = ({ manifest, buffer, mediaElement, segmentQueue, recommendedPlaylist, scheduler }: Params) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       // may move this.. just reminding myself why i brought media element in
       const currentTime = mediaElement.currentTime;
 
@@ -23,12 +23,5 @@ export namespace TickOrchestrator {
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 
       yield* SegmentScheduler.tick(scheduler, { manifest, recommendedPlaylist, requested: bufferBehindMap, currentTime, segmentQueue });
-
-      // get buffer state BUFFER
-      // pass buffer state to scheduler figure out what we need next SCHEDULER
-      //
-      //
-      // buffer uses fetch segments to grab what it needs and append to SourceBuffers BUFFER
-      // or should the fetch be in the orchestrator?
     });
 }

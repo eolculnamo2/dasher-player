@@ -76,8 +76,6 @@ export namespace SegmentScheduler {
               mimeType: codec,
               segment: s,
             });
-            // adding this here for debugging!
-            break;
           }
         }
       }
