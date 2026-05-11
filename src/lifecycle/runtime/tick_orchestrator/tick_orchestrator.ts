@@ -13,15 +13,27 @@ export namespace TickOrchestrator {
     recommendedPlaylist: DashManifest.Playlist;
     manifest: DashManifest.Type;
   };
-  export const make = ({ manifest, buffer, mediaElement, segmentQueue, recommendedPlaylist, scheduler }: Params) =>
-    Effect.gen(function*() {
+  export const make = ({
+    manifest,
+    buffer,
+    mediaElement,
+    segmentQueue,
+    recommendedPlaylist,
+    scheduler,
+  }: Params) =>
+    Effect.gen(function* () {
       // may move this.. just reminding myself why i brought media element in
       const currentTime = mediaElement.currentTime;
 
-      const derp = [...buffer.buffers.keys()][0]!
-      yield* BufferManager.flushSegmentQueue(buffer, derp, segmentQueue);
+      yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentQueue);
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 
-      yield* SegmentScheduler.tick(scheduler, { manifest, recommendedPlaylist, requested: bufferBehindMap, currentTime, segmentQueue });
+      yield* SegmentScheduler.tick(scheduler, {
+        manifest,
+        recommendedPlaylist,
+        requested: bufferBehindMap,
+        currentTime,
+        segmentQueue,
+      });
     });
 }

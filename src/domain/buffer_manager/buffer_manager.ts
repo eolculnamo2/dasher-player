@@ -1,64 +1,126 @@
-// registers and attaches source buffers;
-// manages their state;
-// provides API for adding and removing content from buffer
 import { Data, Duration, Effect, Queue, Chunk } from "effect";
-import type { Codec } from "../codec/codec";
+import { Codec } from "../codec/codec";
 import { MediaSourceModule } from "../media_source/media_source";
 import { SourceBufferModule } from "../source_buffer/source_buffer";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import type { SegmentQueue } from "../segment_queue/segment_queue";
 
-// ^^ Seems like plenty of responsibility for one module (avoid the temptation to do too much in buffer)
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(9);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{
-    playlistHeight: number;
-  }> { }
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
   };
 
-  type CreateBufferParams = {
+  type CreateVideoBufferParams = {
+    kind: "video";
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     mimeType: Codec.MimeType.Type;
     manifest: DashManifest.Type;
+    sourceBuffer: SourceBuffer,
     playlistHeight: number;
   };
-  export const createBuffer = (
-    self: Type,
-    { mediaSource, mimeType, manifest, playlistHeight }: CreateBufferParams,
-  ) =>
-    Effect.gen(function*() {
-      const current = self.buffers.get(mimeType);
+  type CreateAudioBufferParams = {
+    kind: "audio";
+    mediaSource: MediaSourceModule.OpenedMediaSource.Type;
+    mimeType: Codec.MimeType.Type;
+    manifest: DashManifest.Type;
+    sourceBuffer: SourceBuffer,
+  };
+  type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
+  export const createBuffer = (self: Type, params: CreateBufferParams) =>
+    Effect.gen(function* () {
+      const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
       }
 
-      const playlist = DashManifest.getPlaylistByHeight(manifest, playlistHeight);
+      const playlist = (() => {
+        switch (params.kind) {
+          case "video":
+            return DashManifest.getPlaylistByHeight(params.manifest, params.playlistHeight);
+          case "audio":
+            return DashManifest.getAudioPlaylist(params.manifest);
+        }
+      })();
+      if (!playlist) {
+        yield* Effect.logDebug(`no playlist available for ${params.kind}`);
+        return;
+      }
       const initUrl = playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
-        return yield* Effect.fail(new MissingInitSegmentUrl({ playlistHeight }));
+        console.log('mising init url');
+        return yield* Effect.fail(new MissingInitSegmentUrl());
       }
 
       const initSegment = yield* SegmentFetcher.fetch(initUrl);
-      const sourceBuffer = yield* SourceBufferModule.make({ mediaSource, mimeType });
 
-      // yield* SourceBufferModule.attachSegment(sourceBuffer, initSegment);
-      SourceBufferModule.attachSegment(sourceBuffer, initSegment);
+      SourceBufferModule.attachSegment(params.sourceBuffer, initSegment);
+      console.log(`registered ${params.mimeType} to buffer manager`);
+      yield* Effect.logDebug(`registered ${params.mimeType} to buffer manager`)
+      self.buffers.set(params.mimeType, params.sourceBuffer);
+      return params.sourceBuffer;
+    });
 
-      self.buffers.set(mimeType, sourceBuffer);
-      return sourceBuffer;
+  // create a buffer for every available adaptation set -- just support video and audio for now
+  type CreateBuffersParams = {
+    mediaSource: MediaSourceModule.OpenedMediaSource.Type;
+    manifest: DashManifest.Type;
+    recommendedPlaylist: DashManifest.Playlist;
+  };
+  export const createBuffers = (
+    self: Type,
+    { mediaSource, manifest, recommendedPlaylist }: CreateBuffersParams,
+  ) =>
+    Effect.gen(function* () {
+      const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
+
+      // adding source buffer after segments start getting assigned breaks things so do it all at once
+      const videoSourceBuffer = yield* SourceBufferModule.make({
+        mediaSource: mediaSource,
+        mimeType: DashManifest.mimeTypeByPlaylist(recommendedPlaylist),
+      });
+
+      const audioSourceBuffer = yield* SourceBufferModule.make({
+        mediaSource: mediaSource,
+        mimeType: Codec.MimeType.fromCodec("audio/mp4", Codec.makeAudio(audioCodec)),
+      });
+      yield* BufferManager.createBuffer(self, {
+        kind: "video",
+        mediaSource,
+        manifest,
+        mimeType: DashManifest.mimeTypeByPlaylist(recommendedPlaylist),
+        playlistHeight: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
+        sourceBuffer: videoSourceBuffer,
+      });
+
+      if (audioCodec) {
+       yield* BufferManager.createBuffer(self, {
+          kind: "audio",
+          mediaSource,
+          manifest,
+          mimeType: Codec.MimeType.fromCodec("audio/mp4", Codec.makeAudio(audioCodec)),
+          sourceBuffer: audioSourceBuffer,
+        });
+        return {
+          audioSourceBuffer,
+          videoSourceBuffer,
+        };
+      }
+      Effect.logWarning("Unable to find audio codec");
+      return {
+        videoSourceBuffer,
+      };
     });
 
   // note: may not end up being the best thing to pass around raw source buffers
-  export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) =>{
-      console.log('attaching');
-      return SourceBufferModule.attachSegment(sourceBuffer, segment);
-  }
+  export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) => {
+    return SourceBufferModule.attachSegment(sourceBuffer, segment);
+  };
 
   type GetSourceBufferAhead = (sourceBuffer: SourceBuffer, currentTime: number) => number;
   const getSourceBufferAhead: GetSourceBufferAhead = (sourceBuffer, currentTime) => {
@@ -79,7 +141,10 @@ export namespace BufferManager {
     return 0;
   };
 
-  export type BufferAheadByCodec = (self: Type, currentTime: number) => Map<Codec.MimeType.Type, number>;
+  export type BufferAheadByCodec = (
+    self: Type,
+    currentTime: number,
+  ) => Map<Codec.MimeType.Type, number>;
 
   export const bufferAheadByCodec: BufferAheadByCodec = (self, currentTime) => {
     const aheadMap = new Map<Codec.MimeType.Type, number>();
@@ -108,23 +173,36 @@ export namespace BufferManager {
   };
 
   // will have to deal with more than one buffer for audio -- and ordering is non existent in practice
-  export const flushSegmentQueue = (self: Type, mimeType: Codec.MimeType.Type, segmentQueue: SegmentQueue.Type) => Effect.gen(function* (){
-    const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
-      Effect.map(Chunk.toArray),
-      Effect.map(data => data.toSorted(d => d.segment.number > d.segment.number ? 1 : -1)));
-    const buffer = self.buffers.get(mimeType);
-    if (!buffer) {
-      throw new Error(`invariant violation - no buffer exists for mime type ${mimeType}`)
-    }
-    for (let i = 0; i < flushed.length; i++) {
-      const f = flushed[i];
-      if (!f) continue;
-      if (buffer.updating) {
-        yield* SourceBufferModule.waitForUpdateEnd(buffer);
+  export const flushSegmentQueue = (
+    self: Type,
+    mimeTypes: MapIterator<Codec.MimeType.Type>,
+    segmentQueue: SegmentQueue.Type,
+  ) =>
+    Effect.gen(function* () {
+      const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
+        Effect.map(Chunk.toArray),
+        // keep an eye on this. It might cause weird problems later. It would be better to eventually strictly insert in order into the queue
+        // but that is complexity that can be probably be punted in the short term
+        // Effect.map((data) => data.toSorted((d) => (d.segment.number > d.segment.number ? 1 : -1))),
+      );
+      for (const mimeType of mimeTypes) {
+        const buffer = self.buffers.get(mimeType);
+        if (!buffer) {
+          throw new Error(`invariant violation - no buffer exists for mime type ${mimeType}`);
+        }
+        for (let i = 0; i < flushed.length; i++) {
+          const f = flushed[i];
+          console.log(f?.mimeType, mimeType);
+          if (f?.mimeType !== mimeType) {
+            continue;
+          }
+          if (buffer.updating) {
+            yield* SourceBufferModule.waitForUpdateEnd(buffer);
+          }
+          attachSegment(buffer, f.data);
+        }
       }
-      attachSegment(buffer, f.data)
-    }
-  });
+    });
 
   export const make = (): Type => {
     return { buffers: new Map() };

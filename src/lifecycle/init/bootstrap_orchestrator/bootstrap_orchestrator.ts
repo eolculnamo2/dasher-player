@@ -7,7 +7,7 @@ import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
 
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T & { bufferManager: BufferManager.Type }) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // We may consider using fibers to parallelize MediaSource construction, manifest fetch
       // and potentially others
 
@@ -32,15 +32,14 @@ export namespace BootstrapOrchestrator {
       );
 
       // create source buffer
-      const sourceBuffer = yield* BufferManager.createBuffer(params.bufferManager, {
+      const sourceBuffers = yield* BufferManager.createBuffers(params.bufferManager, {
         mediaSource,
         manifest,
-        mimeType: DashManifest.mimeTypeByPlaylist(recommendedPlaylist),
-        playlistHeight: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
+        recommendedPlaylist,
       });
 
       return {
-        sourceBuffer,
+        sourceBuffers,
         mediaSource,
         manifest,
         recommendedPlaylist,

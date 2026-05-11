@@ -5,7 +5,7 @@ import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_schedul
 import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
 import { SegmentQueue } from "@/src/domain/segment_queue/segment_queue";
 
-const TICK_SLEEP = Duration.millis(2500);
+const TICK_SLEEP = Duration.millis(200);
 
 export namespace RuntimeOrchestrator {
   type Params = {

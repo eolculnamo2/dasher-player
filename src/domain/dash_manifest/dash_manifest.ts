@@ -64,6 +64,18 @@ export namespace DashManifest {
     default: Schema.optional(Schema.Boolean),
     autoselect: Schema.optional(Schema.Boolean),
     playlists: Schema.optional(Schema.mutable(Schema.Array(Playlist))),
+    audio: Schema.optional(
+      Schema.Struct({
+        main: Schema.Struct({
+          playlists: Schema.Array(
+            Schema.Struct({
+              attributes: PlaylistAttributes,
+              segments: Schema.Array(DashSegment),
+            }),
+          ),
+        }),
+      }),
+    ),
   });
 
   export type DashMediaGroupRendition = typeof DashMediaGroupRendition.Type;
@@ -142,8 +154,12 @@ export namespace DashManifest {
     return playlist;
   };
 
+  // just assuming one for now...
+  export const getAudioPlaylist = (self: Type) =>
+    self.mediaGroups.AUDIO?.audio?.main?.playlists?.[0];
+
   export const mimeTypeByPlaylist = (playlist: Playlist): Codec.MimeType.Type =>
-    Codec.MimeType.fromCodec('video/mp4', Codec.makeVideo(playlist.attributes.CODECS));
+    Codec.MimeType.fromCodec("video/mp4", Codec.makeVideo(playlist.attributes.CODECS));
 
   // need ot figure out how mpd-parser does video vs audio adaptations although with playlists, they might just be combined
   export const getRecommendedVideoPlaylist = (
@@ -168,7 +184,6 @@ export namespace DashManifest {
       result.push(segment);
       accumulated += segment.duration;
 
-      console.log({ accumulated, d: segment.duration })
       if (accumulated > secondsNeeded) {
         break;
       }

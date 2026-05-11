@@ -7,15 +7,11 @@ export namespace SourceBufferModule {
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     mimeType: Codec.MimeType.Type;
   }) => Effect.Effect<SourceBuffer>;
-  export class SourceBufferUpdateError extends Data.TaggedError(
-    "SourceBufferUpdateError",
-  )<{
+  export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
   }> { }
 
-  export class SourceBufferAbortError extends Data.TaggedError(
-    "SourceBufferAbortError",
-  )<{}> { }
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -23,13 +19,19 @@ export namespace SourceBufferModule {
       throw new Error("Invariant violation: MediaSource unexpectedly closed during bootstrapping");
     }
 
+    console.log('adding for ', Codec.MimeType.toString(mimeType));
+    console.log("BEFORE addSourceBuffer", {
+      mime: Codec.MimeType.toString(mimeType),
+      sourceBufferCount: mediaSource.sourceBuffers.length,
+      activeSourceBufferCount: mediaSource.activeSourceBuffers.length,
+      readyState: mediaSource.readyState,
+    });
     const sourceBuffer = mediaSource.addSourceBuffer(Codec.MimeType.toString(mimeType));
     return Effect.succeed(sourceBuffer);
   };
 
   // this is happy path only right now until we get a working video poc
-  export const attachSegment = (self: Type, segment: ArrayBuffer) =>
-    self.appendBuffer(segment);
+  export const attachSegment = (self: Type, segment: ArrayBuffer) => self.appendBuffer(segment);
 
   export const waitForUpdateEnd = (
     sourceBuffer: SourceBuffer,

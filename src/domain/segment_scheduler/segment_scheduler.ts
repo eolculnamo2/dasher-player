@@ -47,22 +47,20 @@ export namespace SegmentScheduler {
       const preferredPlaylist = {
         height: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
         bandwidth: recommendedPlaylist.attributes.BANDWIDTH,
-      }
-      console.log(requested);
-      for (const [codec, neededBuffer] of requested) {
+      };
+      for (const [mimeType, neededBuffer] of requested) {
         // long term we dont want to rely on mime type prefix for this...
-        if (Codec.MimeType.toString(codec).startsWith("video")) {
+        if (Codec.MimeType.toString(mimeType).startsWith("video")) {
           const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
           const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
           if (!currentSegment) {
             throw new Error(
-              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${codec}`,
+              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
             );
           }
-          console.log({currentSegment})
           const segmentsToFetch = DashManifest.getSegmentsToFetch(
             playlist.segments,
-            currentSegment.number, 
+            currentSegment.number,
             neededBuffer,
           );
 
@@ -73,7 +71,37 @@ export namespace SegmentScheduler {
             }
             self.fetchMap.set(s.uri, { kind: "loading" });
             toFetch.push({
-              mimeType: codec,
+              mimeType,
+              segment: s,
+            });
+          }
+        }
+        if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
+          const playlist = DashManifest.getAudioPlaylist(manifest);
+          if (!playlist) {
+            Effect.logDebug("no audio playlist.. skipping");
+            continue;
+          }
+          const currentSegment = DashManifest.findCurrentSegment(playlist, currentTime);
+          if (!currentSegment) {
+            throw new Error(
+              `Invariant violation: Unable to find current segment! ${currentTime} on ${preferredPlaylist.height} for ${mimeType}`,
+            );
+          }
+          const segmentsToFetch = DashManifest.getSegmentsToFetch(
+            playlist.segments,
+            currentSegment.number,
+            neededBuffer,
+          );
+
+          for (let i = 0; i < segmentsToFetch.length; i++) {
+            const s = segmentsToFetch[i];
+            if (!s || self.fetchMap.get(s.uri)) {
+              continue;
+            }
+            self.fetchMap.set(s.uri, { kind: "loading" });
+            toFetch.push({
+              mimeType: mimeType,
               segment: s,
             });
           }
@@ -86,20 +114,19 @@ export namespace SegmentScheduler {
           toFetch,
           (pending) => {
             if (!pending.segment.resolvedUri) {
-              Effect.logWarning('no resolved uri on fetch daemon');
+              Effect.logWarning("no resolved uri on fetch daemon");
             }
-            console.log('from fork')
-            return SegmentFetcher.fetch(pending.segment.resolvedUri ?? '').pipe(
+            return SegmentFetcher.fetch(pending.segment.resolvedUri ?? "").pipe(
               Effect.flatMap((data) => {
-                console.log('data!', data)
                 return SegmentQueue.add(segmentQueue, {
                   data,
                   segment: pending.segment,
+                  mimeType: pending.mimeType,
                 });
               }),
-            )
+            );
           },
-          { concurrency: 1 },
+          { concurrency: 4 },
         ),
       );
       return self;

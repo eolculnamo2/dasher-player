@@ -23,23 +23,23 @@ export namespace MediaSourceModule {
 
   export class MediaSourceUnsupportedError extends Data.TaggedError(
     "MediaSourceUnsupportedError",
-  )<{}> { }
+  )<{}> {}
 
   export class MediaSourceCreateError extends Data.TaggedError("MediaSourceCreateError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
   export class MediaSourceMountError extends Data.TaggedError("MediaSourceMountError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
   export class MediaSourceOpenError extends Data.TaggedError("MediaSourceOpenError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
   export class MediaSourceOpenTimeoutError extends Data.TaggedError("MediaSourceOpenTimeoutError")<{
     timeoutMs: number;
-  }> { }
+  }> {}
 
   export type Error =
     | MediaSourceUnsupportedError
@@ -52,7 +52,7 @@ export namespace MediaSourceModule {
     MediaSource,
     MediaSourceUnsupportedError | MediaSourceCreateError
   > =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (!("MediaSource" in globalThis)) {
         return yield* Effect.fail(new MediaSourceUnsupportedError());
       }
@@ -119,7 +119,7 @@ export namespace MediaSourceModule {
       sourceOpenTimeoutMs?: number;
     },
   ): Effect.Effect<InitReturn, Error, Scope> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const sourceOpenTimeoutMs = options?.sourceOpenTimeoutMs ?? 5_000;
       yield* Effect.logDebug("Creating MediaSource");
       const mediaSource = yield* createMediaSource();

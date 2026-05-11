@@ -5,17 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>dasher-ts</title>
-    <video id="dasher-test-vid" controls />
   </head>
   <body>
     <div id="app"></div>
+    <video id="dasher-test-vid" controls></video>
     <script type="module">
       import * as Dasher from "./build/main.js";
       Dasher.init({
         mediaElement: document.getElementById("dasher-test-vid"),
         manifestUrl:
-          "https://lib.resi.media/39d4f22d-5bb8-487f-8847-92ef285fd5f0/3db45bdd-9f9c-11f0-9442-119c15a2b3b7/Manifest-1761924649.mpd",
+          // "https://lib.resi.media/39d4f22d-5bb8-487f-8847-92ef285fd5f0/3db45bdd-9f9c-11f0-9442-119c15a2b3b7/Manifest-1761924649.mpd",
+          "https://lib.resi.media/2c478fdb-e8ee-4418-be32-123cce9204ba/a47b29f6-0399-11f0-afbc-9f616e1d23c7/Manifest.mpd"
       });
+      setInterval(() => {
+        const video = document.getElementById('dasher-test-vid');
+        console.log({
+          muted: video.muted,
+          volume: video.volume,
+          readyState: video.readyState,
+          mediaError: video.error,
+        });
+      }, 1000)
       // }).then((player) => player.load());
     </script>
   </body>
