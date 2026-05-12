@@ -7,9 +7,9 @@ import type { SegmentUrl } from "../segment_url/segment_url";
 import { Effect } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
-import { SegmentQueue } from "../segment_queue/segment_queue";
 import { VideoTick } from "./video-tick/video-tick";
 import { AudioTick } from "./audio-tick/audio-tick";
+import { SegmentPendingQueue } from "../segmnet_pending_queue/segment_pending_queue";
 
 // also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
@@ -27,18 +27,16 @@ export namespace SegmentScheduler {
 
   export type TickParams = {
     manifest: DashManifest.Type;
-    segmentQueue: SegmentQueue.Type;
+    segmentPendingQueue: SegmentPendingQueue.Type;
     recommendedPlaylist: DashManifest.Playlist;
     requested: Map<Codec.MimeType.Type, number>;
     currentTime: number;
   };
 
-  // this is where we can make the behavior slick.. i.e. can swap out hanging segments for different bitrate or multi cdn
-  // this is also a mess right now; I will go back and treat this like a nested, this orchestrator + properly decompose its pieces
-  // after i can prove that I can get video + audio working together for happy path
+  // make the scheduler as nice as you can 💪
   export const tick = (
     self: Type,
-    { manifest, recommendedPlaylist, requested, currentTime, segmentQueue }: TickParams,
+    { manifest, segmentPendingQueue, recommendedPlaylist, requested, currentTime }: TickParams,
   ) =>
     Effect.gen(function* () {
       const preferredPlaylist = {
@@ -71,40 +69,16 @@ export namespace SegmentScheduler {
         }),
       );
 
-      const readyForFetch: Array<{
-        mimeType: Codec.MimeType.Type;
-        segment: DashManifest.DashSegment;
-      }> = [];
       for (const { mimeType, segments } of segmentGroups) {
         for (const segment of segments) {
           if (self.fetchMap.get(segment.uri)) {
             continue;
           }
           self.fetchMap.set(segment.uri, { kind: "loading" });
-          readyForFetch.push({ mimeType, segment });
+          yield* SegmentPendingQueue.add(segmentPendingQueue, { mimeType, segment });
         }
       }
 
-      yield* Effect.forkDaemon(
-        Effect.forEach(
-          readyForFetch,
-          (pending) => {
-            if (!pending.segment.resolvedUri) {
-              Effect.logWarning("no resolved uri on fetch daemon");
-            }
-            return SegmentFetcher.fetch(pending.segment.resolvedUri ?? "").pipe(
-              Effect.flatMap((data) => {
-                return SegmentQueue.add(segmentQueue, {
-                  data,
-                  segment: pending.segment,
-                  mimeType: pending.mimeType,
-                });
-              }),
-            );
-          },
-          { concurrency: 4 },
-        ),
-      );
       return self;
     });
 }

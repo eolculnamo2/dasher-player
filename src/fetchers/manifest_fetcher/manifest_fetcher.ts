@@ -36,7 +36,7 @@ export namespace ManifestFetcher {
         Effect.retry({
           while: (error) => error._tag === "RetryableManifestError",
           schedule: Schedule.exponential(Duration.millis(250)).pipe(
-            Schedule.compose(Schedule.recurs(3)),
+            Schedule.upTo(Duration.seconds(5)),
           ),
         }),
       );

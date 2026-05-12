@@ -3,11 +3,13 @@ import { TickOrchestrator } from "./tick_orchestrator/tick_orchestrator";
 import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
 import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
 import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
-import { SegmentQueue } from "@/src/domain/segment_queue/segment_queue";
+import { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/segment_fetched_queue";
+import { SegmentPendingQueue } from "@/src/domain/segmnet_pending_queue/segment_pending_queue";
 
-const TICK_SLEEP = Duration.millis(200);
+const RUNTIME_INTERVAL = Duration.millis(200);
 
 export namespace RuntimeOrchestrator {
+  let lifetimeTick = Duration.millis(0);
   type Params = {
     bufferManager: BufferManager.Type;
     mediaElement: HTMLMediaElement;
@@ -16,19 +18,26 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
-      const segmentQueue = yield* SegmentQueue.make();
+      const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
+      const segmentPendingQueue = yield* SegmentPendingQueue.make();
       const scheduler = SegmentScheduler.make();
 
+      // may move this back? my hesitation is race conditions when things like seeked events clear
+      // the queue, but im not sure if that's actually justified
+      // yield* Effect.fork(SegmentFetchWorker.subscribe(segmentPendingQueue, segmentFetchedQueue));
       while (true) {
         yield* TickOrchestrator.make({
           buffer: bufferManager,
           mediaElement,
           recommendedPlaylist,
-          segmentQueue,
+          segmentFetchedQueue,
+          segmentPendingQueue,
           scheduler,
           manifest,
+          lifetimeTick,
         });
-        yield* Effect.sleep(TICK_SLEEP);
+        yield* Effect.sleep(RUNTIME_INTERVAL);
+        lifetimeTick = Duration.sum(lifetimeTick, RUNTIME_INTERVAL);
       }
     });
 }

@@ -9,9 +9,9 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {

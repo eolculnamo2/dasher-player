@@ -4,12 +4,12 @@ import { MediaSourceModule } from "../media_source/media_source";
 import { SourceBufferModule } from "../source_buffer/source_buffer";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { DashManifest } from "../dash_manifest/dash_manifest";
-import type { SegmentQueue } from "../segment_queue/segment_queue";
+import type { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 
 export namespace BufferManager {
-  const DEFAULT_BUFFERING_GOAL = Duration.seconds(9);
+  const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -32,7 +32,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -74,7 +74,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, recommendedPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -172,9 +172,9 @@ export namespace BufferManager {
   export const flushSegmentQueue = (
     self: Type,
     mimeTypes: MapIterator<Codec.MimeType.Type>,
-    segmentQueue: SegmentQueue.Type,
+    segmentQueue: SegmentFetchedQueue.Type,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
         Effect.map(Chunk.toArray),
         // keep an eye on this. It might cause weird problems later. It would be better to eventually strictly insert in order into the queue

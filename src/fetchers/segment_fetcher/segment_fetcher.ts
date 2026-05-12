@@ -44,7 +44,7 @@ export namespace SegmentFetcher {
         Effect.retry({
           while: (error) => error._tag === "RetryableSegmentError",
           schedule: Schedule.exponential(Duration.millis(100)).pipe(
-            Schedule.compose(Schedule.recurs(2)),
+            Schedule.upTo(Duration.seconds(5)),
           ),
         }),
       );
