@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Duration, Effect } from "effect";
 import type { Codec } from "../../codec/codec";
 import { DashManifest } from "../../dash_manifest/dash_manifest";
 
@@ -7,7 +7,7 @@ export namespace AudioTick {
     manifest: DashManifest.Type;
     currentTime: number;
     mimeType: Codec.MimeType.Type;
-    neededBuffer: number;
+    neededBuffer: Duration.Duration;
   };
 
   export const handle = ({ manifest, currentTime, mimeType, neededBuffer }: HandleParams) =>
@@ -32,7 +32,7 @@ export namespace AudioTick {
         segments: DashManifest.getSegmentsToFetch(
           playlist.segments,
           currentSegment.number,
-          neededBuffer,
+          Duration.toSeconds(neededBuffer),
         ),
       };
     });

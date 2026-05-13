@@ -140,30 +140,56 @@ export namespace BufferManager {
   export type BufferAheadByCodec = (
     self: Type,
     currentTime: number,
-  ) => Map<Codec.MimeType.Type, number>;
+  ) => Map<Codec.MimeType.Type, Duration.Duration>;
 
   export const bufferAheadByCodec: BufferAheadByCodec = (self, currentTime) => {
-    const aheadMap = new Map<Codec.MimeType.Type, number>();
+    const aheadMap = new Map<Codec.MimeType.Type, Duration.Duration>();
 
     for (const [mimeType, sourceBuffer] of self.buffers.entries()) {
-      aheadMap.set(mimeType, getSourceBufferAhead(sourceBuffer, currentTime));
+      aheadMap.set(mimeType, Duration.seconds(getSourceBufferAhead(sourceBuffer, currentTime)));
     }
 
     return aheadMap;
   };
 
+  export type BufferRunwayByCodec = (
+    self: Type,
+    currentTime: number,
+  ) => Map<Codec.MimeType.Type, Duration.Duration>;
+
+  export const bufferRunwayByCodec: BufferRunwayByCodec = (self, currentTime) =>
+    bufferAheadByCodec(self, currentTime);
+
+  export const getBufferRunway = (self: Type, currentTime: number): Duration.Duration => {
+    const runwayByCodec = bufferRunwayByCodec(self, currentTime);
+    const runways = Array.from(runwayByCodec.values());
+
+    if (runways.length === 0) {
+      return Duration.zero;
+    }
+
+    return runways.reduce((lowest, runway) =>
+      Duration.toMillis(runway) < Duration.toMillis(lowest) ? runway : lowest,
+    );
+  };
+
   export type BufferBehindTargetByCodec = (
     self: Type,
     currentTime: number,
-  ) => Map<Codec.MimeType.Type, number>;
+  ) => Map<Codec.MimeType.Type, Duration.Duration>;
   export const bufferBehindTargetByCodec: BufferBehindTargetByCodec = (
     self: Type,
     currentTime: number,
   ) => {
     const aheadMap = bufferAheadByCodec(self, currentTime);
-    const behindTargetMap = new Map<Codec.MimeType.Type, number>();
+    const behindTargetMap = new Map<Codec.MimeType.Type, Duration.Duration>();
     for (const [mimeType, bufferedAhead] of aheadMap.entries()) {
-      behindTargetMap.set(mimeType, Duration.toSeconds(DEFAULT_BUFFERING_GOAL) - bufferedAhead);
+      behindTargetMap.set(
+        mimeType,
+        Duration.millis(
+          Math.max(0, Duration.toMillis(DEFAULT_BUFFERING_GOAL) - Duration.toMillis(bufferedAhead)),
+        ),
+      );
     }
     return behindTargetMap;
   };

@@ -25,21 +25,11 @@ export namespace TickOrchestrator {
     segmentPendingQueue,
     recommendedPlaylist,
     scheduler,
-    lifetimeTick,
   }: Params) =>
     Effect.gen(function*() {
       const currentTime = mediaElement.currentTime;
 
       yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);
-
-      yield* Effect.fork(
-        SegmentFetchWorker.subscribe({
-          segmentFetchedQueue,
-          segmentPendingQueue,
-          lifetimeTick,
-          currentTime,
-        }),
-      );
 
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 

@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Duration, Effect } from "effect";
 import type { Codec } from "../../codec/codec";
 import { DashManifest } from "../../dash_manifest/dash_manifest";
 
@@ -8,7 +8,7 @@ export namespace VideoTick {
     preferredPlaylist: { height: number; bandwidth: number };
     currentTime: number;
     mimeType: Codec.MimeType.Type;
-    neededBuffer: number;
+    neededBuffer: Duration.Duration;
   };
 
   export const handle = ({
@@ -32,7 +32,7 @@ export namespace VideoTick {
         segments: DashManifest.getSegmentsToFetch(
           playlist.segments,
           currentSegment.number,
-          neededBuffer,
+          Duration.toSeconds(neededBuffer),
         ),
       };
     });

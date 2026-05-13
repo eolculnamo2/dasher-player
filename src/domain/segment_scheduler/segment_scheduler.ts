@@ -4,7 +4,7 @@
 
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import type { SegmentUrl } from "../segment_url/segment_url";
-import { Effect } from "effect";
+import { Duration, Effect } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 import { VideoTick } from "./video-tick/video-tick";
@@ -29,7 +29,7 @@ export namespace SegmentScheduler {
     manifest: DashManifest.Type;
     segmentPendingQueue: SegmentPendingQueue.Type;
     recommendedPlaylist: DashManifest.Playlist;
-    requested: Map<Codec.MimeType.Type, number>;
+    requested: Map<Codec.MimeType.Type, Duration.Duration>;
     currentTime: number;
   };
 
