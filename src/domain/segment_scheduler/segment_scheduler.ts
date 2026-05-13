@@ -9,7 +9,7 @@ import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 import { VideoTick } from "./video-tick/video-tick";
 import { AudioTick } from "./audio-tick/audio-tick";
-import { SegmentPendingQueue } from "../segmnet_pending_queue/segment_pending_queue";
+import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 
 // also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
@@ -32,7 +32,7 @@ export namespace SegmentScheduler {
 
   export type TickParams = {
     manifest: DashManifest.Type;
-    segmentPendingQueue: SegmentPendingQueue.Type;
+    segmentPendingQueue: SegmentPendingQueues.Type;
     recommendedPlaylist: DashManifest.Playlist;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
     currentTime: number;
@@ -79,8 +79,12 @@ export namespace SegmentScheduler {
           if (self.fetchMap.get(segment.uri)) {
             continue;
           }
+          const kind = SegmentPendingQueues.kindFromMimeType(mimeType);
+          if (!kind) {
+            continue;
+          }
           self.fetchMap.set(segment.uri, { kind: "loading" });
-          yield* SegmentPendingQueue.add(segmentPendingQueue, { mimeType, segment });
+          yield* SegmentPendingQueues.add(segmentPendingQueue, kind, { mimeType, segment });
         }
       }
 

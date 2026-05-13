@@ -4,14 +4,13 @@ import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
 import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
 import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
 import { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/segment_fetched_queue";
-import { SegmentPendingQueue } from "@/src/domain/segmnet_pending_queue/segment_pending_queue";
+import { SegmentPendingQueues } from "@/src/domain/segment_pending_queues/segment_pending_queues";
 import { SegmentFetchWorker } from "@/src/domain/segment_fetch_worker/segment_fetch_worker";
 import { MediaEventHandler } from "@/src/domain/media_event_handler/media_event_handler";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
 export namespace RuntimeOrchestrator {
-  let lifetimeTick = Duration.millis(0);
   type Params = {
     bufferManager: BufferManager.Type;
     mediaElement: HTMLMediaElement;
@@ -21,7 +20,7 @@ export namespace RuntimeOrchestrator {
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
-      const segmentPendingQueue = yield* SegmentPendingQueue.make();
+      const segmentPendingQueue = yield* SegmentPendingQueues.make();
       const scheduler = SegmentScheduler.make();
 
       yield* MediaEventHandler.subscribe({
@@ -31,8 +30,6 @@ export namespace RuntimeOrchestrator {
         scheduler,
       });
 
-      // may move this back? my hesitation is race conditions when things like seeked events clear
-      // the queue, but im not sure if that's actually justified
       yield* Effect.fork(
         SegmentFetchWorker.subscribe({
           bufferManager,
@@ -41,6 +38,7 @@ export namespace RuntimeOrchestrator {
           segmentPendingQueue,
         }),
       );
+
       while (true) {
         yield* TickOrchestrator.make({
           buffer: bufferManager,
@@ -50,10 +48,8 @@ export namespace RuntimeOrchestrator {
           segmentPendingQueue,
           scheduler,
           manifest,
-          lifetimeTick,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
-        lifetimeTick = Duration.sum(lifetimeTick, RUNTIME_INTERVAL);
       }
     });
 }

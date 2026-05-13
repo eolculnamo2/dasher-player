@@ -1,5 +1,5 @@
 import { Chunk, Duration, Effect, Queue } from "effect";
-import type { SegmentPendingQueue } from "../segmnet_pending_queue/segment_pending_queue";
+import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { BufferManager } from "../buffer_manager/buffer_manager";
@@ -17,13 +17,15 @@ export namespace SegmentFetchWorker {
   type SubscribeParams = {
     bufferManager: BufferManager.Type;
     mediaElement: HTMLMediaElement;
-    segmentPendingQueue: SegmentPendingQueue.Type;
+    segmentPendingQueue: SegmentPendingQueues.Type;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
   };
 
   const shouldSleep = (bufferRunway: Duration.Duration) =>
     Duration.toMillis(bufferRunway) >= Duration.toMillis(SKIP_SLEEP_BUFFER_THRESHOLD);
 
+  // this might be too aggressive -- video element is waiting a while before we're able to play (has a high buffering gaol).
+  // The actual solution might be to try to tune the buffering goal on the media source/video element
   const getMaxSegmentsPerLoop = (bufferRunway: Duration.Duration) =>
     Duration.toMillis(bufferRunway) > Duration.toMillis(SINGLE_SEGMENT_BUFFER_THRESHOLD)
       ? 1
@@ -31,6 +33,41 @@ export namespace SegmentFetchWorker {
 
   const sleepIfNeeded = (bufferRunway: Duration.Duration) =>
     shouldSleep(bufferRunway) ? Effect.sleep(DEFAULT_FETCH_WORKER_SLEEP) : Effect.void;
+
+  const getBufferRunwayByQueueKind = (
+    bufferManager: BufferManager.Type,
+    currentTime: number,
+    kind: SegmentPendingQueues.Kind,
+  ) => {
+    const runwayByCodec = BufferManager.bufferRunwayByCodec(bufferManager, currentTime);
+    const matchingRunways = Array.from(runwayByCodec.entries())
+      .filter(([mimeType]) => SegmentPendingQueues.kindFromMimeType(mimeType) === kind)
+      .map(([, runway]) => runway);
+
+    if (matchingRunways.length === 0) {
+      return Duration.zero;
+    }
+
+    return matchingRunways.reduce((lowest, runway) =>
+      Duration.toMillis(runway) < Duration.toMillis(lowest) ? runway : lowest,
+    );
+  };
+
+  const interleave = <A>(left: Array<A>, right: Array<A>) => {
+    const result: Array<A> = [];
+    const maxLength = Math.max(left.length, right.length);
+    for (let i = 0; i < maxLength; i++) {
+      const leftItem = left[i];
+      if (leftItem) {
+        result.push(leftItem);
+      }
+      const rightItem = right[i];
+      if (rightItem) {
+        result.push(rightItem);
+      }
+    }
+    return result;
+  };
 
   export const subscribe = ({
     bufferManager,
@@ -40,12 +77,30 @@ export namespace SegmentFetchWorker {
   }: SubscribeParams) =>
     Effect.forever(
       Effect.gen(function* () {
-        const first = yield* Queue.take(segmentPendingQueue.queue);
-        const bufferRunway = BufferManager.getBufferRunway(bufferManager, mediaElement.currentTime);
-        const maxSegmentsPerLoop = getMaxSegmentsPerLoop(bufferRunway);
-        const rest = yield* Queue.takeUpTo(segmentPendingQueue.queue, maxSegmentsPerLoop - 1);
+        const currentTime = mediaElement.currentTime;
+        const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
+        const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
+        const videoMaxSegmentsPerLoop = getMaxSegmentsPerLoop(videoBufferRunway);
+        const audioMaxSegmentsPerLoop = getMaxSegmentsPerLoop(audioBufferRunway);
+        const videoPending = yield* Queue.takeUpTo(
+          segmentPendingQueue.videoQueue,
+          videoMaxSegmentsPerLoop,
+        );
+        const audioPending = yield* Queue.takeUpTo(
+          segmentPendingQueue.audioQueue,
+          audioMaxSegmentsPerLoop,
+        );
+        const pendingSegments = interleave(
+          Chunk.toArray(videoPending),
+          Chunk.toArray(audioPending),
+        );
 
-        for (const pending of [first, ...Chunk.toArray(rest)]) {
+        if (pendingSegments.length === 0) {
+          yield* Effect.sleep(DEFAULT_FETCH_WORKER_SLEEP);
+          return;
+        }
+
+        for (const pending of pendingSegments) {
           if (pending.segment.resolvedUri == null) {
             yield* Effect.logWarning(`skipping segment with missing resolvedUri`);
             continue;
@@ -61,7 +116,11 @@ export namespace SegmentFetchWorker {
           );
         }
 
-        yield* sleepIfNeeded(bufferRunway);
+        yield* sleepIfNeeded(
+          Duration.toMillis(videoBufferRunway) < Duration.toMillis(audioBufferRunway)
+            ? videoBufferRunway
+            : audioBufferRunway,
+        );
       }),
     );
 }

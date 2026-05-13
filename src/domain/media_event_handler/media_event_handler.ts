@@ -1,13 +1,13 @@
 import { Effect } from "effect";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
-import { SegmentPendingQueue } from "../segmnet_pending_queue/segment_pending_queue";
+import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import { SegmentScheduler } from "../segment_scheduler/segment_scheduler";
 
 export namespace MediaEventHandler {
   type Params = {
     mediaElement: HTMLMediaElement;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
-    segmentPendingQueue: SegmentPendingQueue.Type;
+    segmentPendingQueue: SegmentPendingQueues.Type;
     scheduler: SegmentScheduler.Type;
   };
 
@@ -23,7 +23,7 @@ export namespace MediaEventHandler {
           Effect.runFork(
             Effect.all([
               SegmentFetchedQueue.clear(segmentFetchedQueue),
-              SegmentPendingQueue.clear(segmentPendingQueue),
+              SegmentPendingQueues.clear(segmentPendingQueue),
               SegmentScheduler.clear(scheduler),
             ]),
           );
