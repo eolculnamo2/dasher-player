@@ -36,4 +36,9 @@ export namespace SegmentPendingQueue {
     Effect.gen(function* () {
       return yield* Queue.takeAll(self.queue);
     });
+
+  export const clear = (self: Type) =>
+    Effect.gen(function* () {
+      yield* Queue.takeAll(self.queue);
+    });
 }

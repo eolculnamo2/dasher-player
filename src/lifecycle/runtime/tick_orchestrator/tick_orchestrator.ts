@@ -1,6 +1,5 @@
 import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
 import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
-import { SegmentFetchWorker } from "@/src/domain/segment_fetch_worker/segment_fetch_worker";
 import type { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/segment_fetched_queue";
 import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
 import type { SegmentPendingQueue } from "@/src/domain/segmnet_pending_queue/segment_pending_queue";

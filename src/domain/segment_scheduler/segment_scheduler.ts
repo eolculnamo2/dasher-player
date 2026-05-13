@@ -25,6 +25,11 @@ export namespace SegmentScheduler {
     fetchMap: new Map<SegmentUrl.Type, SegmentStatus.Type>(),
   });
 
+  export const clear = (self: Type) =>
+    Effect.sync(() => {
+      self.fetchMap.clear();
+    });
+
   export type TickParams = {
     manifest: DashManifest.Type;
     segmentPendingQueue: SegmentPendingQueue.Type;
