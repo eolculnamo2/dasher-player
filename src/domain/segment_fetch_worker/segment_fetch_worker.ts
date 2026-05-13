@@ -101,21 +101,25 @@ export namespace SegmentFetchWorker {
           return;
         }
 
-        for (const pending of pendingSegments) {
-          if (pending.segment.resolvedUri == null) {
-            yield* Effect.logWarning(`skipping segment with missing resolvedUri`);
-            continue;
-          }
-          yield* SegmentFetcher.fetch(pending.segment.resolvedUri).pipe(
-            Effect.flatMap((data) =>
-              SegmentFetchedQueue.add(segmentFetchedQueue, {
-                data,
-                segment: pending.segment,
-                mimeType: pending.mimeType,
-              }),
-            ),
-          );
-        }
+        yield* Effect.forEach(
+          pendingSegments,
+          (pending) => {
+            if (pending.segment.resolvedUri == null) {
+              return Effect.logWarning(`skipping segment with missing resolvedUri`);
+            }
+
+            return SegmentFetcher.fetch(pending.segment.resolvedUri).pipe(
+              Effect.flatMap((data) =>
+                SegmentFetchedQueue.add(segmentFetchedQueue, {
+                  data,
+                  segment: pending.segment,
+                  mimeType: pending.mimeType,
+                }),
+              ),
+            );
+          },
+          { concurrency: "unbounded", discard: true },
+        );
 
         yield* sleepIfNeeded(
           Duration.toMillis(videoBufferRunway) < Duration.toMillis(audioBufferRunway)
