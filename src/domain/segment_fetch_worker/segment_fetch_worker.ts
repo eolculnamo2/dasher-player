@@ -74,8 +74,9 @@ export namespace SegmentFetchWorker {
     mediaElement,
     segmentFetchedQueue,
     segmentPendingQueue,
-  }: SubscribeParams) =>
-    Effect.forever(
+  }: SubscribeParams) => {
+    console.log("subscribing...");
+    return Effect.forever(
       Effect.gen(function* () {
         const currentTime = mediaElement.currentTime;
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
@@ -123,4 +124,5 @@ export namespace SegmentFetchWorker {
         );
       }),
     );
+  };
 }

@@ -1,4 +1,5 @@
-import { Duration, Effect } from "effect";
+import { HttpClient } from "@effect/platform";
+import { Duration, Effect, Fiber } from "effect";
 import { TickOrchestrator } from "./tick_orchestrator/tick_orchestrator";
 import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
 import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
@@ -22,22 +23,31 @@ export namespace RuntimeOrchestrator {
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
       const segmentPendingQueue = yield* SegmentPendingQueues.make();
       const scheduler = SegmentScheduler.make();
+      const httpClient = yield* HttpClient.HttpClient;
+
+      const segmentFetchWorker = () =>
+        SegmentFetchWorker.subscribe({
+          bufferManager,
+          mediaElement,
+          segmentFetchedQueue,
+          segmentPendingQueue,
+        }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
+      let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
 
       yield* MediaEventHandler.subscribe({
         mediaElement,
         segmentFetchedQueue,
         segmentPendingQueue,
         scheduler,
-      });
-
-      yield* Effect.fork(
-        SegmentFetchWorker.subscribe({
-          bufferManager,
-          mediaElement,
-          segmentFetchedQueue,
-          segmentPendingQueue,
+        cancelCurrentSegmentFetches: Effect.gen(function* () {
+          yield* Fiber.interrupt(segmentFetchWorkerFiber);
         }),
-      );
+        restartSegmentFetchWorker: Effect.gen(function* () {
+          // TODO: move worker lifecycle management behind a long-lived control channel.
+          console.log("restarting");
+          segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
+        }),
+      });
 
       while (true) {
         yield* TickOrchestrator.make({

@@ -9,6 +9,8 @@ export namespace MediaEventHandler {
     segmentFetchedQueue: SegmentFetchedQueue.Type;
     segmentPendingQueue: SegmentPendingQueues.Type;
     scheduler: SegmentScheduler.Type;
+    cancelCurrentSegmentFetches: Effect.Effect<void>;
+    restartSegmentFetchWorker: Effect.Effect<void>;
   };
 
   export const subscribe = ({
@@ -16,16 +18,22 @@ export namespace MediaEventHandler {
     segmentFetchedQueue,
     segmentPendingQueue,
     scheduler,
+    cancelCurrentSegmentFetches,
+    restartSegmentFetchWorker,
   }: Params) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const onSeeking = () => {
           Effect.runFork(
-            Effect.all([
-              SegmentFetchedQueue.clear(segmentFetchedQueue),
-              SegmentPendingQueues.clear(segmentPendingQueue),
-              SegmentScheduler.clear(scheduler),
-            ]),
+            Effect.gen(function* () {
+              yield* cancelCurrentSegmentFetches;
+              yield* Effect.all([
+                SegmentFetchedQueue.clear(segmentFetchedQueue),
+                SegmentPendingQueues.clear(segmentPendingQueue),
+                SegmentScheduler.clear(scheduler),
+              ]);
+              yield* restartSegmentFetchWorker;
+            }),
           );
         };
 
