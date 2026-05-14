@@ -4,6 +4,7 @@ import type { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/seg
 import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
 import type { SegmentPendingQueues } from "@/src/domain/segment_pending_queues/segment_pending_queues";
 import { Effect } from "effect";
+import { BufferZone } from "@/src/domain/buffer_zone/buffer_zone";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -25,6 +26,15 @@ export namespace TickOrchestrator {
     scheduler,
   }: Params) =>
     Effect.gen(function*() {
+      const bufferZone = BufferZone.get({
+        bufferManager: buffer,
+        manifest,
+        mediaElement,
+      })
+
+      // will remove log later. Will leave or turn into debug while building out ABR behavior
+      yield* Effect.logInfo('buffer zone', bufferZone);
+
       const currentTime = mediaElement.currentTime;
 
       yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);

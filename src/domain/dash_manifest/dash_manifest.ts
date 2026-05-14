@@ -130,7 +130,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
 
   export const make = (
     raw: string,
@@ -182,7 +182,7 @@ export namespace DashManifest {
       }
 
       result.push(segment);
-      accumulated += segment.duration;
+      accumulated += segment.duration ?? 0;
 
       if (accumulated > secondsNeeded) {
         break;
@@ -198,6 +198,9 @@ export namespace DashManifest {
         Effect.logWarning(`presentation time is missing for segment ${p.number}`);
         return false;
       }
-      return p.presentationTime <= currentTime && p.duration + p.presentationTime >= currentTime;
+      return p.presentationTime <= currentTime && (p.duration ?? 0) + p.presentationTime >= currentTime;
     });
+
+  // TODO once live support is added
+  export const isLive = (_self: Type) => false;
 }

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, Either } from "effect";
 import type * as ParseResult from "effect/ParseResult";
-import { DashParser, type Manifest } from "./dash_manifest";
+import type { ManifestUrl } from "../manifest_url/manifest_url";
+import { DashManifest } from "./dash_manifest";
 
 const validStaticMpd = `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT10S" minBufferTime="PT1S">
@@ -36,10 +37,12 @@ const incompleteMpd = `<?xml version="1.0" encoding="UTF-8"?>
   <Period />
 </MPD>`;
 
-const parseEither = (raw: string): Promise<Either.Either<Manifest, ParseResult.ParseError>> =>
-  Effect.runPromise(Effect.either(DashParser.make({ raw })));
+const manifestUrl = "https://example.com/manifest.mpd" as ManifestUrl.T;
 
-describe("DashParser.make", () => {
+const parseEither = (raw: string): Promise<Either.Either<DashManifest.Type, ParseResult.ParseError>> =>
+  Effect.runPromise(Effect.either(DashManifest.make(raw, manifestUrl)));
+
+describe("DashManifest.make", () => {
   test("returns a Manifest effect for a valid static MPD", async () => {
     const result = await parseEither(validStaticMpd);
 

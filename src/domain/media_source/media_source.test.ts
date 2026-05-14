@@ -5,6 +5,7 @@ import { MediaSourceModule } from "@/src/domain/media_source/media_source";
 class FakeMediaSource extends EventTarget {
   static instances: FakeMediaSource[] = [];
   static throwOnCreate: unknown;
+  readyState = "closed";
 
   constructor() {
     super();
@@ -74,7 +75,13 @@ const runMakeScopedEither = (mediaElement: HTMLMediaElement, timeoutMs = 25) =>
   );
 
 const dispatchSourceOpen = () => {
-  FakeMediaSource.instances.at(-1)?.dispatchEvent(new Event("sourceopen"));
+  const mediaSource = FakeMediaSource.instances.at(-1);
+  if (!mediaSource) {
+    return;
+  }
+
+  mediaSource.readyState = "open";
+  mediaSource.dispatchEvent(new Event("sourceopen"));
 };
 
 const dispatchSourceError = () => {

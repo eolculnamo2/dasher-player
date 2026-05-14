@@ -25,7 +25,9 @@ export namespace MediaEventHandler {
       Effect.sync(() => {
         const onSeeking = () => {
           Effect.runFork(
-            Effect.gen(function* () {
+            Effect.gen(function*() {
+              // TODO: make this smarter so that if we seek into a region that's already in buffer, we don't clear and refetch.
+              // also need to test with generic, programatic time changes such as jump forward or backward 5 secs that a player UI might implement
               yield* cancelCurrentSegmentFetches;
               yield* Effect.all([
                 SegmentFetchedQueue.clear(segmentFetchedQueue),

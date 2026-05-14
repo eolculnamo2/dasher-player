@@ -80,27 +80,27 @@ describe("ManifestFetcher.fetch", () => {
     expect(attempts).toBe(4);
   });
 
-  test("fails with RetryableManifestError after retry attempts are exhausted", async () => {
+  test("continues retrying retryable response statuses until a request succeeds", async () => {
     let attempts = 0;
     const client = makeClient(() =>
       Effect.suspend(() => {
         attempts += 1;
-        return Effect.succeed(makeResponse("service unavailable", 503));
+
+        if (attempts < 5) {
+          return Effect.succeed(makeResponse("service unavailable", 503));
+        }
+
+        return Effect.succeed(makeResponse("manifest-after-503s"));
       }),
     );
 
     const result = await runTestClockEither(fetchWithClient(client));
 
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      const error = result.left;
-      expect(error).toBeInstanceOf(ManifestFetcher.RetryableManifestError);
-      if (error instanceof ManifestFetcher.RetryableManifestError) {
-        expect(error.url).toBe(url);
-        expect(error.status).toBe(503);
-      }
+    expect(Either.isRight(result)).toBe(true);
+    if (Either.isRight(result)) {
+      expect(result.right).toBe("manifest-after-503s");
     }
-    expect(attempts).toBe(4);
+    expect(attempts).toBe(5);
   });
 
   test("fails with NonRetryableManifestError for non-retryable response statuses and does not retry", async () => {
@@ -126,55 +126,62 @@ describe("ManifestFetcher.fetch", () => {
     expect(attempts).toBe(1);
   });
 
-  test("does not retry non-response HttpClient errors", async () => {
+  test("retries non-response HttpClient errors until a request succeeds", async () => {
     const cause = new Error("network down");
     const requestError = makeRequestError(cause);
     let attempts = 0;
     const client = makeClient(() =>
       Effect.suspend(() => {
         attempts += 1;
-        return Effect.fail(requestError);
+
+        if (attempts < 3) {
+          return Effect.fail(requestError);
+        }
+
+        return Effect.succeed(makeResponse("manifest-after-network-errors"));
       }),
     );
 
-    const result = await runEither(fetchWithClient(client));
+    const result = await runTestClockEither(fetchWithClient(client));
 
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      expect(result.left).toBe(requestError);
+    expect(Either.isRight(result)).toBe(true);
+    if (Either.isRight(result)) {
+      expect(result.right).toBe("manifest-after-network-errors");
     }
-    expect(attempts).toBe(1);
+    expect(attempts).toBe(3);
   });
 
-  test("fails with ManifestTimeoutError when the manifest request does not complete", async () => {
-    const client = makeClient(() => Effect.never);
+  test("retries after a manifest request timeout and returns when a later attempt completes", async () => {
+    let attempts = 0;
+    const client = makeClient(() =>
+      Effect.suspend(() => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return Effect.never;
+        }
+
+        return Effect.succeed(makeResponse("manifest-after-timeout"));
+      }),
+    );
 
     const result = await runTestClockEither(fetchWithClient(client));
 
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      const error = result.left;
-      expect(error).toBeInstanceOf(ManifestFetcher.ManifestTimeoutError);
-      if (error instanceof ManifestFetcher.ManifestTimeoutError) {
-        expect(error.url).toBe(url);
-        expect(error.timeoutMs).toBe(10_000);
-      }
+    expect(Either.isRight(result)).toBe(true);
+    if (Either.isRight(result)) {
+      expect(result.right).toBe("manifest-after-timeout");
     }
+    expect(attempts).toBe(2);
   });
 
-  test("fails with NonRetryableManifestError for non-2xx, non-retryable response statuses", async () => {
+  test("returns the response body for 3xx response statuses", async () => {
     const client = makeClient(() => Effect.succeed(makeResponse("redirect", 302)));
 
     const result = await runEither(fetchWithClient(client));
 
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      const error = result.left;
-      expect(error).toBeInstanceOf(ManifestFetcher.NonRetryableManifestError);
-      if (error instanceof ManifestFetcher.NonRetryableManifestError) {
-        expect(error.url).toBe(url);
-        expect(error.status).toBe(302);
-      }
+    expect(Either.isRight(result)).toBe(true);
+    if (Either.isRight(result)) {
+      expect(result.right).toBe("redirect");
     }
   });
 });
