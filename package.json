@@ -1,11 +1,13 @@
 {
   "name": "dasher-effect",
+  "sideEffects": false,
   "private": true,
   "type": "module",
-  "module": "index.ts",
+  "module": "main.ts",
   "scripts": {
     "start": "bun run ./src/main.ts",
-    "build": "bun build ./src/main.ts --outdir ./build",
+    "build": "bun build ./src/main.ts --outdir ./build --target browser",
+    "build:prod": "bun build ./src/main.ts --outdir ./build --minify --target browser --sourcemap=none",
     "format": "oxfmt",
     "format:check": "oxfmt --check"
   },

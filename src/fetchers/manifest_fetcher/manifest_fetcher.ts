@@ -6,21 +6,21 @@ export namespace ManifestFetcher {
   export class RetryableManifestError extends Data.TaggedError("RetryableManifestError")<{
     url: ManifestUrl.T;
     status: number;
-  }> {}
+  }> { }
 
   export class NonRetryableManifestError extends Data.TaggedError("NonRetryableManifestError")<{
     url: ManifestUrl.T;
     status: number;
-  }> {}
+  }> { }
 
   export class ManifestTimeoutError extends Data.TaggedError("ManifestTimeoutError")<{
     url: ManifestUrl.T;
     timeoutMs: number;
-  }> {}
+  }> { }
 
   const DEFAULT_MANIFEST_TIMEOUT = Duration.seconds(10);
   export const fetch = (url: ManifestUrl.T) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const client = yield* HttpClient.HttpClient;
 
       const response = yield* client.get(url).pipe(
@@ -36,7 +36,7 @@ export namespace ManifestFetcher {
         Effect.retry({
           while: (error) => error._tag !== "NonRetryableManifestError",
           schedule: Schedule.exponential(Duration.millis(100)).pipe(
-            Schedule.intersect(Schedule.spaced(Duration.seconds(5))),
+            Schedule.union(Schedule.spaced(Duration.seconds(5))),
             Schedule.compose(Schedule.forever),
             Schedule.jittered,
           ),

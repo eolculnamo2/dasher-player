@@ -24,17 +24,10 @@ export namespace TickOrchestrator {
     recommendedPlaylist,
     scheduler,
   }: Params) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const currentTime = mediaElement.currentTime;
 
       yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);
-      console.log(
-        buffer.buffers.entries().forEach(([k, b]) => {
-          if (b.buffered.length > 0) {
-            console.log(k, b.buffered.end(0) - b.buffered.start(0));
-          }
-        }),
-      );
 
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 

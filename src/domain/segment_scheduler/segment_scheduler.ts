@@ -11,11 +11,10 @@ import { VideoTick } from "./video-tick/video-tick";
 import { AudioTick } from "./audio-tick/audio-tick";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 
-// also cancel requests if the target changes such as when a user seeks out of the previous range
 export namespace SegmentScheduler {
   namespace SegmentStatus {
-    export type Type = { kind: "loading" } | { kind: "error"; e: SegmentFetcher.SegmentError };
     // successful loads get pushed straight to queue and removed from map
+    export type Type = { kind: "loading" } | { kind: "error"; e: SegmentFetcher.SegmentError };
   }
 
   export type Type = {
