@@ -34,9 +34,11 @@ export namespace ManifestFetcher {
             }),
         }),
         Effect.retry({
-          while: (error) => error._tag === "RetryableManifestError",
-          schedule: Schedule.exponential(Duration.millis(250)).pipe(
-            Schedule.upTo(Duration.seconds(5)),
+          while: (error) => error._tag !== "NonRetryableManifestError",
+          schedule: Schedule.exponential(Duration.millis(100)).pipe(
+            Schedule.intersect(Schedule.spaced(Duration.seconds(5))),
+            Schedule.compose(Schedule.forever),
+            Schedule.jittered,
           ),
         }),
       );
