@@ -199,7 +199,7 @@ export namespace DashManifest {
         return false;
       }
       return (
-        p.presentationTime <= currentTime && (p.duration ?? 0) + p.prensentationTime >= currentTime
+        p.presentationTime <= currentTime && (p.duration ?? 0) + p.presentationTime >= currentTime
       );
     });
 

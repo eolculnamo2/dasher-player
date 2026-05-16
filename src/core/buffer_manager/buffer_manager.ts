@@ -1,4 +1,4 @@
-import { Data, Duration, Effect, Queue, Chunk } from "effect";
+import { Data, Duration, Effect, Queue, Chunk, Ref } from "effect";
 import { Codec } from "../codec/codec";
 import { MediaSourceModule } from "../media_source/media_source";
 import { SourceBufferModule } from "../source_buffer/source_buffer";
@@ -68,11 +68,11 @@ export namespace BufferManager {
   type CreateBuffersParams = {
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     manifest: DashManifest.Type;
-    recommendedPlaylist: DashManifest.Playlist;
+    currentPlaylist: DashManifest.Playlist;
   };
   export const createBuffers = (
     self: Type,
-    { mediaSource, manifest, recommendedPlaylist }: CreateBuffersParams,
+    { mediaSource, manifest, currentPlaylist }: CreateBuffersParams,
   ) =>
     Effect.gen(function* () {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
@@ -80,7 +80,7 @@ export namespace BufferManager {
       // adding source buffer after segments start getting assigned breaks things so do it all at once
       const videoSourceBuffer = yield* SourceBufferModule.make({
         mediaSource: mediaSource,
-        mimeType: DashManifest.mimeTypeByPlaylist(recommendedPlaylist),
+        mimeType: DashManifest.mimeTypeByPlaylist(currentPlaylist),
       });
 
       const audioSourceBuffer = yield* SourceBufferModule.make({
@@ -91,8 +91,8 @@ export namespace BufferManager {
         kind: "video",
         mediaSource,
         manifest,
-        mimeType: DashManifest.mimeTypeByPlaylist(recommendedPlaylist),
-        playlistHeight: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
+        mimeType: DashManifest.mimeTypeByPlaylist(currentPlaylist),
+        playlistHeight: currentPlaylist.attributes.RESOLUTION?.height ?? 0,
         sourceBuffer: videoSourceBuffer,
       });
 

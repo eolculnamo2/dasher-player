@@ -1,5 +1,5 @@
 import { HttpClient } from "@effect/platform";
-import { Duration, Effect, Fiber } from "effect";
+import { Duration, Effect, Fiber, Ref } from "effect";
 import { TickOrchestrator } from "./tick_orchestrator/tick_orchestrator";
 import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 import { SegmentScheduler } from "@/src/core/segment_scheduler/segment_scheduler";
@@ -8,8 +8,7 @@ import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fe
 import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_pending_queues";
 import { SegmentFetchWorker } from "@/src/core/segment_fetch_worker/segment_fetch_worker";
 import { MediaEventHandler } from "@/src/core/media_event_handler/media_event_handler";
-import { AbrTracking } from "@/src/abr/abr_tracking/abr_tracking";
-import { BufferZone } from "@/src/core/buffer_zone/buffer_zone";
+import { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
@@ -22,17 +21,12 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
-      const abrTracking = AbrTracking.make();
+      const currentPlaylist = yield* Ref.make(recommendedPlaylist);
+      const hysteresis = yield* Ref.make(Hysteresis.make());
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
       const segmentPendingQueue = yield* SegmentPendingQueues.make();
       const scheduler = SegmentScheduler.make();
       const httpClient = yield* HttpClient.HttpClient;
-
-      const zone = BufferZone.get({
-        bufferManager,
-        manifest,
-        mediaElement,
-      });
 
       const segmentFetchWorker = () =>
         SegmentFetchWorker.subscribe({
@@ -62,13 +56,15 @@ export namespace RuntimeOrchestrator {
         yield* TickOrchestrator.make({
           buffer: bufferManager,
           mediaElement,
-          recommendedPlaylist,
+          currentPlaylist,
           segmentFetchedQueue,
           segmentPendingQueue,
           scheduler,
           manifest,
+          hysteresis,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
+        yield* Hysteresis.incrementTimeInBuffer(hysteresis, RUNTIME_INTERVAL);
       }
     });
 }

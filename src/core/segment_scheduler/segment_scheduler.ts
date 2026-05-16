@@ -4,7 +4,7 @@
 
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import type { SegmentUrl } from "../segment_url/segment_url";
-import { Duration, Effect } from "effect";
+import { Duration, Effect, Ref } from "effect";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 import { VideoTick } from "./video-tick/video-tick";
@@ -32,7 +32,7 @@ export namespace SegmentScheduler {
   export type TickParams = {
     manifest: DashManifest.Type;
     segmentPendingQueue: SegmentPendingQueues.Type;
-    recommendedPlaylist: DashManifest.Playlist;
+    currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
     currentTime: number;
   };
@@ -40,12 +40,13 @@ export namespace SegmentScheduler {
   // make the scheduler as nice as you can 💪
   export const tick = (
     self: Type,
-    { manifest, segmentPendingQueue, recommendedPlaylist, requested, currentTime }: TickParams,
+    { manifest, segmentPendingQueue, currentPlaylist, requested, currentTime }: TickParams,
   ) =>
     Effect.gen(function* () {
+      const playlist = yield* Ref.get(currentPlaylist);
       const preferredPlaylist = {
-        height: recommendedPlaylist.attributes.RESOLUTION?.height ?? 0,
-        bandwidth: recommendedPlaylist.attributes.BANDWIDTH,
+        height: playlist.attributes.RESOLUTION?.height ?? 0,
+        bandwidth: playlist.attributes.BANDWIDTH,
       };
       const segmentGroups = yield* Effect.all(
         Array.from(requested.entries()).map(([mimeType, neededBuffer]) => {

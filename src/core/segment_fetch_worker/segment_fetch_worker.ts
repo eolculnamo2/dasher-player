@@ -75,7 +75,6 @@ export namespace SegmentFetchWorker {
     segmentFetchedQueue,
     segmentPendingQueue,
   }: SubscribeParams) => {
-    console.log("subscribing...");
     return Effect.forever(
       Effect.gen(function* () {
         const currentTime = mediaElement.currentTime;

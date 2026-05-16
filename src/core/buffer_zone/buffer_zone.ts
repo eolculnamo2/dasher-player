@@ -53,9 +53,10 @@ export namespace BufferZone {
     return "healthy";
   };
 
+  // TODO: implement after some experimenting
   export namespace Trends {
     export type Type = {};
 
-    export const make = () => {};
+    export const make = (): Type => ({});
   }
 }

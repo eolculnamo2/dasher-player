@@ -35,7 +35,7 @@ export namespace BootstrapOrchestrator {
       const sourceBuffers = yield* BufferManager.createBuffers(params.bufferManager, {
         mediaSource,
         manifest,
-        recommendedPlaylist,
+        currentPlaylist: recommendedPlaylist,
       });
 
       return {

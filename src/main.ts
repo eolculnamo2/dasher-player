@@ -13,7 +13,6 @@ const make = (params: Dasher.Params.T) =>
       const bootstrap = yield* BootstrapOrchestrator.make({ ...validatedParams, bufferManager });
 
       Effect.logDebug("Bootstrap complete");
-      console.log(bootstrap);
 
       yield* RuntimeOrchestrator.make({
         ...bootstrap,
