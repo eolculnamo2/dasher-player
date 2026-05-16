@@ -1,4 +1,4 @@
-import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
+import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
 
 export namespace RecommendedBitratePolicy {
   const getStartupBitrate = (connection?: NetworkInformation): number => {

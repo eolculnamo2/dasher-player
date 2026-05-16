@@ -2,7 +2,7 @@
 
 import { Data, Duration, Effect, Schedule } from "effect";
 import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platform";
-import type { SegmentUrl } from "@/src/domain/segment_url/segment_url";
+import type { SegmentUrl } from "@/src/core/segment_url/segment_url";
 
 export namespace SegmentFetcher {
   export class RetryableSegmentError extends Data.TaggedError("RetryableSegmentError")<{

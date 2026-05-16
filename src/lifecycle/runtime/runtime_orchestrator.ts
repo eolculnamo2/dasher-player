@@ -1,15 +1,15 @@
 import { HttpClient } from "@effect/platform";
 import { Duration, Effect, Fiber } from "effect";
 import { TickOrchestrator } from "./tick_orchestrator/tick_orchestrator";
-import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
-import { SegmentScheduler } from "@/src/domain/segment_scheduler/segment_scheduler";
-import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
-import { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/segment_fetched_queue";
-import { SegmentPendingQueues } from "@/src/domain/segment_pending_queues/segment_pending_queues";
-import { SegmentFetchWorker } from "@/src/domain/segment_fetch_worker/segment_fetch_worker";
-import { MediaEventHandler } from "@/src/domain/media_event_handler/media_event_handler";
-import { AbrTracking } from "@/src/domain/abr_tracking/abr_tracking";
-import { BufferZone } from "@/src/domain/buffer_zone/buffer_zone";
+import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
+import { SegmentScheduler } from "@/src/core/segment_scheduler/segment_scheduler";
+import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
+import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
+import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_pending_queues";
+import { SegmentFetchWorker } from "@/src/core/segment_fetch_worker/segment_fetch_worker";
+import { MediaEventHandler } from "@/src/core/media_event_handler/media_event_handler";
+import { AbrTracking } from "@/src/abr/abr_tracking/abr_tracking";
+import { BufferZone } from "@/src/core/buffer_zone/buffer_zone";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 

@@ -1,4 +1,4 @@
-import { ManifestUrl } from "@/src/domain/manifest_url/manifest_url";
+import { ManifestUrl } from "@/src/core/manifest_url/manifest_url";
 
 export namespace Dasher {
   export namespace Params {

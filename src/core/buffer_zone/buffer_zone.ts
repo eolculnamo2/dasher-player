@@ -54,12 +54,8 @@ export namespace BufferZone {
   };
 
   export namespace Trends {
-    export type Type = {
+    export type Type = {};
 
-    }
-
-    export const make = () => {
-
-    }
+    export const make = () => {};
   }
 }

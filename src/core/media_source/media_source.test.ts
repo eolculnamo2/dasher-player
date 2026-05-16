@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Effect, Either } from "effect";
-import { MediaSourceModule } from "@/src/domain/media_source/media_source";
+import { MediaSourceModule } from "@/src/core/media_source/media_source";
 
 class FakeMediaSource extends EventTarget {
   static instances: FakeMediaSource[] = [];

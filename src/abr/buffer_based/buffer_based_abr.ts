@@ -1,7 +1,7 @@
-import type { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
+import type { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 import { TimeInBuffer } from "../time_in_buffer/time_in_buffer";
-import type { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
-import { BufferZone } from "@/src/domain/buffer_zone/buffer_zone";
+import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
+import { BufferZone } from "@/src/core/buffer_zone/buffer_zone";
 
 // first pass without hysteresis
 export namespace BufferBasedAbr {

@@ -3,7 +3,7 @@ import { Dasher } from "@/src/lifecycle/init/dasher_init_params";
 import { BootstrapOrchestrator } from "@/src/lifecycle/init/bootstrap_orchestrator/bootstrap_orchestrator";
 import { FetchHttpClient } from "@effect/platform";
 import { RuntimeOrchestrator } from "./lifecycle/runtime/runtime_orchestrator";
-import { BufferManager } from "./domain/buffer_manager/buffer_manager";
+import { BufferManager } from "./core/buffer_manager/buffer_manager";
 
 const make = (params: Dasher.Params.T) =>
   Effect.scoped(

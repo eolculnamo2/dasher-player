@@ -1,6 +1,6 @@
 import { Data, Duration, Effect, Schedule } from "effect";
 import { HttpClient, HttpClientResponse } from "@effect/platform";
-import type { ManifestUrl } from "@/src/domain/manifest_url/manifest_url";
+import type { ManifestUrl } from "@/src/core/manifest_url/manifest_url";
 
 export namespace ManifestFetcher {
   export class RetryableManifestError extends Data.TaggedError("RetryableManifestError")<{

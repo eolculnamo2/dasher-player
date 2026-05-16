@@ -1,9 +1,9 @@
 import { Effect } from "effect";
-import { MediaSourceModule } from "@/src/domain/media_source/media_source";
+import { MediaSourceModule } from "@/src/core/media_source/media_source";
 import type { Dasher } from "@/src/lifecycle/init/dasher_init_params";
 import { ManifestFetcher } from "@/src/fetchers/manifest_fetcher/manifest_fetcher";
-import { DashManifest } from "@/src/domain/dash_manifest/dash_manifest";
-import { BufferManager } from "@/src/domain/buffer_manager/buffer_manager";
+import { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
+import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 
 export namespace BootstrapOrchestrator {
   export const make = (params: Dasher.ValidatedParams.T & { bufferManager: BufferManager.Type }) =>
