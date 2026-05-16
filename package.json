@@ -1,8 +1,8 @@
 {
   "name": "dasher-effect",
-  "sideEffects": false,
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "module": "main.ts",
   "scripts": {
     "start": "bun run ./src/main.ts",

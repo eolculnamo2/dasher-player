@@ -39,7 +39,9 @@ const incompleteMpd = `<?xml version="1.0" encoding="UTF-8"?>
 
 const manifestUrl = "https://example.com/manifest.mpd" as ManifestUrl.T;
 
-const parseEither = (raw: string): Promise<Either.Either<DashManifest.Type, ParseResult.ParseError>> =>
+const parseEither = (
+  raw: string,
+): Promise<Either.Either<DashManifest.Type, ParseResult.ParseError>> =>
   Effect.runPromise(Effect.either(DashManifest.make(raw, manifestUrl)));
 
 describe("DashManifest.make", () => {

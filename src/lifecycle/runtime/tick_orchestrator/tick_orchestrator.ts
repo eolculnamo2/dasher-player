@@ -25,15 +25,15 @@ export namespace TickOrchestrator {
     recommendedPlaylist,
     scheduler,
   }: Params) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const bufferZone = BufferZone.get({
         bufferManager: buffer,
         manifest,
         mediaElement,
-      })
+      });
 
       // will remove log later. Will leave or turn into debug while building out ABR behavior
-      yield* Effect.logInfo('buffer zone', bufferZone);
+      yield* Effect.logInfo("buffer zone", bufferZone);
 
       const currentTime = mediaElement.currentTime;
 

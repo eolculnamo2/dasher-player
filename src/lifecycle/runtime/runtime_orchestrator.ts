@@ -8,6 +8,8 @@ import { SegmentFetchedQueue } from "@/src/domain/segment_fetched_queue/segment_
 import { SegmentPendingQueues } from "@/src/domain/segment_pending_queues/segment_pending_queues";
 import { SegmentFetchWorker } from "@/src/domain/segment_fetch_worker/segment_fetch_worker";
 import { MediaEventHandler } from "@/src/domain/media_event_handler/media_event_handler";
+import { AbrTracking } from "@/src/domain/abr_tracking/abr_tracking";
+import { BufferZone } from "@/src/domain/buffer_zone/buffer_zone";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
@@ -20,10 +22,17 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
+      const abrTracking = AbrTracking.make();
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
       const segmentPendingQueue = yield* SegmentPendingQueues.make();
       const scheduler = SegmentScheduler.make();
       const httpClient = yield* HttpClient.HttpClient;
+
+      const zone = BufferZone.get({
+        bufferManager,
+        manifest,
+        mediaElement,
+      });
 
       const segmentFetchWorker = () =>
         SegmentFetchWorker.subscribe({

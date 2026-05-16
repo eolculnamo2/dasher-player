@@ -130,7 +130,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
 
   export const make = (
     raw: string,
@@ -198,8 +198,56 @@ export namespace DashManifest {
         Effect.logWarning(`presentation time is missing for segment ${p.number}`);
         return false;
       }
-      return p.presentationTime <= currentTime && (p.duration ?? 0) + p.presentationTime >= currentTime;
+      return (
+        p.presentationTime <= currentTime && (p.duration ?? 0) + p.prensentationTime >= currentTime
+      );
     });
+
+  // highest first
+  export const listPlaylistHeights = (self: Type) =>
+    self.playlists
+      .map((p) => p.attributes.RESOLUTION?.height ?? 0)
+      .filter((h) => h > 0)
+      .sort((a, b) => b - a);
+
+  // return playlist n
+  export const decreasePlaylistBy = (
+    self: Type,
+    params: {
+      current: Playlist;
+      by: number;
+    },
+  ): Playlist => {
+    const currentHeight = params.current.attributes.RESOLUTION?.height ?? 0;
+    const currIndex = listPlaylistHeights(self).findIndex((h) => h === currentHeight);
+    const nextIndex = Math.min(currIndex + params.by, self.playlists.length - 1);
+    const next = self.playlists[nextIndex];
+    if (!next) {
+      throw new Error(
+        `Invariant violation: ${nextIndex} is out of bounds of ${self.playlists.length}`,
+      );
+    }
+    return next;
+  };
+
+  export const increasePlaylistBy = (
+    self: Type,
+    params: {
+      current: Playlist;
+      by: number;
+    },
+  ): Playlist => {
+    const currentHeight = params.current.attributes.RESOLUTION?.height ?? 0;
+    const currIndex = listPlaylistHeights(self).findIndex((h) => h === currentHeight);
+    const nextIndex = Math.max(currIndex - params.by, 0);
+    const next = self.playlists[nextIndex];
+    if (!next) {
+      throw new Error(
+        `Invariant violation: ${nextIndex} is out of bounds of ${self.playlists.length}`,
+      );
+    }
+    return next;
+  };
 
   // TODO once live support is added
   export const isLive = (_self: Type) => false;
