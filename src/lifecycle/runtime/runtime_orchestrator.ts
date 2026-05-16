@@ -36,20 +36,22 @@ export namespace RuntimeOrchestrator {
           segmentPendingQueue,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
+      const cancelCurrentSegmentFetches = Effect.gen(function* () {
+        yield* Fiber.interrupt(segmentFetchWorkerFiber);
+      });
+      const restartSegmentFetchWorker = Effect.gen(function* () {
+        // TODO: move worker lifecycle management behind a long-lived control channel.
+        console.log("restarting");
+        segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
+      });
 
       yield* MediaEventHandler.subscribe({
         mediaElement,
         segmentFetchedQueue,
         segmentPendingQueue,
         scheduler,
-        cancelCurrentSegmentFetches: Effect.gen(function* () {
-          yield* Fiber.interrupt(segmentFetchWorkerFiber);
-        }),
-        restartSegmentFetchWorker: Effect.gen(function* () {
-          // TODO: move worker lifecycle management behind a long-lived control channel.
-          console.log("restarting");
-          segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
-        }),
+        cancelCurrentSegmentFetches,
+        restartSegmentFetchWorker,
       });
 
       while (true) {
@@ -62,6 +64,8 @@ export namespace RuntimeOrchestrator {
           scheduler,
           manifest,
           hysteresis,
+          cancelCurrentSegmentFetches,
+          restartSegmentFetchWorker,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
         yield* Hysteresis.incrementTimeInBuffer(hysteresis, RUNTIME_INTERVAL);

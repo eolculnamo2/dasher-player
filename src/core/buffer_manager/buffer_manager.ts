@@ -10,6 +10,7 @@ export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
   export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
+  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -50,15 +51,10 @@ export namespace BufferManager {
         yield* Effect.logDebug(`no playlist available for ${params.kind}`);
         return;
       }
-      const initUrl = playlist.segments[0]?.map.resolvedUri;
-
-      if (!initUrl) {
-        return yield* Effect.fail(new MissingInitSegmentUrl());
-      }
-
-      const initSegment = yield* SegmentFetcher.fetch(initUrl);
-
-      SourceBufferModule.attachSegment(params.sourceBuffer, initSegment);
+      yield* addInit(self, {
+        playlist,
+        sourceBuffer: params.sourceBuffer,
+      });
       yield* Effect.logInfo(`registered ${params.mimeType} to buffer manager`);
       self.buffers.set(params.mimeType, params.sourceBuffer);
       return params.sourceBuffer;
@@ -114,6 +110,40 @@ export namespace BufferManager {
         videoSourceBuffer,
       };
     });
+
+  export type AddInitParams =
+    | {
+        playlist: DashManifest.Playlist;
+        mimeType: Codec.MimeType.Type;
+      }
+    | {
+        playlist: DashManifest.Playlist;
+        sourceBuffer: SourceBuffer;
+      };
+  export const addInit = (self: Type, params: AddInitParams) =>
+    Effect.gen(function* () {
+      const initUrl = params.playlist.segments[0]?.map.resolvedUri;
+
+      if (!initUrl) {
+        return yield* Effect.fail(new MissingInitSegmentUrl());
+      }
+
+      const initSegment = yield* SegmentFetcher.fetch(initUrl);
+
+      const sourceBuffer =
+        "sourceBuffer" in params ? params.sourceBuffer : self.buffers.get(params.mimeType);
+      if (!sourceBuffer) {
+        return yield* Effect.fail(new MissingByMimeType());
+      }
+
+      SourceBufferModule.attachSegment(sourceBuffer, initSegment);
+    });
+
+  export const findFirstVideoBuffer = (self: Type) => {
+    return self.buffers
+      .entries()
+      .find(([key, value]) => Codec.MimeType.toString(key).startsWith("video"))?.[1];
+  };
 
   // note: may not end up being the best thing to pass around raw source buffers
   export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) => {
@@ -199,6 +229,7 @@ export namespace BufferManager {
     self: Type,
     mimeTypes: MapIterator<Codec.MimeType.Type>,
     segmentQueue: SegmentFetchedQueue.Type,
+    playlist: Ref.Ref<DashManifest.Playlist>,
   ) =>
     Effect.gen(function* () {
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(

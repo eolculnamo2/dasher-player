@@ -249,6 +249,9 @@ export namespace DashManifest {
     return next;
   };
 
+  export const arePlaylistsDistinct = (p1: Playlist, p2: Playlist) =>
+    p1.attributes.RESOLUTION?.height !== p2.attributes.RESOLUTION?.height;
+
   // TODO once live support is added
   export const isLive = (_self: Type) => false;
 }
