@@ -6,7 +6,7 @@ import type { SegmentPendingQueues } from "@/src/core/segment_pending_queues/seg
 import { Effect, Ref } from "effect";
 import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
-import type { Codec } from "@/src/core/codec/codec";
+import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -20,7 +20,7 @@ export namespace TickOrchestrator {
     manifest: DashManifest.Type;
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
-    lastAppendedSegment: Ref.Ref<Map<Codec.MimeType.Type, number>>;
+    lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
   };
   export const make = ({
     manifest,
@@ -35,8 +35,7 @@ export namespace TickOrchestrator {
     restartSegmentFetchWorker,
     lastAppendedSegment,
   }: Params) =>
-    Effect.gen(function* () {
-      const currentTime = mediaElement.currentTime;
+    Effect.gen(function*() {
       const playlistBefore = yield* Ref.get(currentPlaylist);
 
       // ABR on segment fetch
@@ -59,6 +58,7 @@ export namespace TickOrchestrator {
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
+          scheduler.fetchMap.clear();
           yield* BufferManager.clearVideoBuffer(buffer);
           yield* restartSegmentFetchWorker;
         }
@@ -66,13 +66,15 @@ export namespace TickOrchestrator {
 
       yield* BufferManager.flushSegmentQueue(
         buffer,
-        buffer.buffers.keys(),
         segmentFetchedQueue,
         currentPlaylist,
         lastAppendedSegment,
       );
 
-      const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
+      const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(
+        buffer,
+        mediaElement.currentTime,
+      );
 
       yield* SegmentScheduler.tick(scheduler, {
         buffer,
@@ -80,7 +82,6 @@ export namespace TickOrchestrator {
         currentPlaylist,
         segmentPendingQueue,
         requested: bufferBehindMap,
-        currentTime,
       });
     });
 }

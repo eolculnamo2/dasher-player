@@ -36,15 +36,13 @@ export namespace SegmentScheduler {
     segmentPendingQueue: SegmentPendingQueues.Type;
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
-    currentTime: number;
   };
 
-  // make the scheduler as nice as you can 💪
   export const tick = (
     self: Type,
-    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested, currentTime }: TickParams,
+    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested }: TickParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const playlist = yield* Ref.get(currentPlaylist);
       const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
@@ -65,8 +63,7 @@ export namespace SegmentScheduler {
           if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
             return AudioTick.handle({
               manifest,
-              currentTime,
-              // buffer,
+              buffer,
               mimeType,
               neededBuffer,
             });

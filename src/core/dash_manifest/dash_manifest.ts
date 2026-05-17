@@ -130,7 +130,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
 
   export const make = (
     raw: string,
@@ -169,18 +169,20 @@ export namespace DashManifest {
 
   export const getSegmentsToFetch = (
     segments: DashSegment[],
-    nextSegmentIndex: number,
+    nextSegmentNumber: number,
     secondsNeeded: number,
   ): DashSegment[] => {
     const result: DashSegment[] = [];
     let accumulated = 0;
 
-    for (let i = nextSegmentIndex; i < segments.length; i++) {
-      const segment = segments[i];
+    for (let i = nextSegmentNumber; i < segments.length; i++) {
+      const segment = segments.find(s => s.number === i);
       if (!segment) {
+        console.log(`unable to find segment ${i}`)
         continue;
       }
 
+      console.log(`scheduling segment ${segment.number}`);
       result.push(segment);
       accumulated += segment.duration ?? 0;
 

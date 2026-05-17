@@ -19,7 +19,7 @@ export namespace VideoTick {
     mimeType,
     neededBuffer,
   }: HandleParams) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
       const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
       if (!videoBuffer) {
@@ -38,7 +38,6 @@ export namespace VideoTick {
           `Invariant violation: Unable to find current video segment! ${bufferEnd} on ${preferredPlaylist.height} for ${mimeType}`,
         );
       }
-      // console.log({ currentSegment })
 
       return {
         mimeType,

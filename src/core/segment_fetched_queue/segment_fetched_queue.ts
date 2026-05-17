@@ -16,7 +16,7 @@ export namespace SegmentFetchedQueue {
   };
 
   export const make = () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const queue = yield* Queue.unbounded<Queued>();
       return {
         queue,
@@ -24,27 +24,27 @@ export namespace SegmentFetchedQueue {
     });
 
   export const add = (self: Type, next: Queued) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       yield* Queue.offer(self.queue, next);
     });
 
   export const addMany = (self: Type, next: Queued[]) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       yield* Queue.offerAll(self.queue, next);
     });
 
   export const take = (self: Type) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       return yield* Queue.take(self.queue);
     });
 
   export const takeAll = (self: Type) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       return yield* Queue.takeAll(self.queue);
     });
 
   export const clear = (self: Type) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       yield* Queue.takeAll(self.queue);
     });
 }

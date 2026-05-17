@@ -36,6 +36,7 @@ export namespace RuntimeOrchestrator {
           mediaElement,
           segmentFetchedQueue,
           segmentPendingQueue,
+          scheduler,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
       const cancelCurrentSegmentFetches = Effect.gen(function* () {
@@ -43,7 +44,7 @@ export namespace RuntimeOrchestrator {
       });
       const restartSegmentFetchWorker = Effect.gen(function* () {
         // TODO: move worker lifecycle management behind a long-lived control channel.
-        console.log("restarting");
+        scheduler.fetchMap.clear();
         segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
       });
 

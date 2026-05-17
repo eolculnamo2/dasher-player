@@ -3,6 +3,7 @@ import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { BufferManager } from "../buffer_manager/buffer_manager";
+import { SegmentScheduler } from "../segment_scheduler/segment_scheduler";
 
 // opportunities:
 // - differentiate between codec to see how much of each needs caught up (could prioritize by codec, and may queue per codec)i
@@ -19,6 +20,7 @@ export namespace SegmentFetchWorker {
     mediaElement: HTMLMediaElement;
     segmentPendingQueue: SegmentPendingQueues.Type;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
+    scheduler: SegmentScheduler.Type;
   };
 
   const shouldSleep = (bufferRunway: Duration.Duration) =>
@@ -74,9 +76,10 @@ export namespace SegmentFetchWorker {
     mediaElement,
     segmentFetchedQueue,
     segmentPendingQueue,
+    scheduler,
   }: SubscribeParams) => {
     return Effect.forever(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const currentTime = mediaElement.currentTime;
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
@@ -106,15 +109,16 @@ export namespace SegmentFetchWorker {
             if (pending.segment.resolvedUri == null) {
               return Effect.logWarning(`skipping segment with missing resolvedUri`);
             }
-
             return SegmentFetcher.fetch(pending.segment.resolvedUri).pipe(
-              Effect.flatMap((data) =>
-                SegmentFetchedQueue.add(segmentFetchedQueue, {
+              Effect.flatMap((data) => {
+                scheduler.fetchMap.delete(pending.segment.uri);
+                return SegmentFetchedQueue.add(segmentFetchedQueue, {
                   data,
                   playlistId: pending.playlistId,
                   segment: pending.segment,
                   mimeType: pending.mimeType,
-                }),
+                })
+              }
               ),
             );
           },
