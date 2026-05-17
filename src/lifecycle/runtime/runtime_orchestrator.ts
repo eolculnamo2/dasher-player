@@ -9,6 +9,7 @@ import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_
 import { SegmentFetchWorker } from "@/src/core/segment_fetch_worker/segment_fetch_worker";
 import { MediaEventHandler } from "@/src/core/media_event_handler/media_event_handler";
 import { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
+import { SegmentOrder } from "@/src/core/segment_order/segment_order";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
@@ -21,6 +22,7 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
+      const lastAppendedSegment = yield* SegmentOrder.make();
       const currentPlaylist = yield* Ref.make(recommendedPlaylist);
       const hysteresis = yield* Ref.make(Hysteresis.make());
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
@@ -34,7 +36,6 @@ export namespace RuntimeOrchestrator {
           mediaElement,
           segmentFetchedQueue,
           segmentPendingQueue,
-          currentPlaylist,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
       const cancelCurrentSegmentFetches = Effect.gen(function* () {
@@ -67,6 +68,7 @@ export namespace RuntimeOrchestrator {
           hysteresis,
           cancelCurrentSegmentFetches,
           restartSegmentFetchWorker,
+          lastAppendedSegment,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
         yield* Hysteresis.incrementTimeInBuffer(hysteresis, RUNTIME_INTERVAL);

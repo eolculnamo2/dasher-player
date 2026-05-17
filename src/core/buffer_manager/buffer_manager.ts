@@ -4,13 +4,14 @@ import { MediaSourceModule } from "../media_source/media_source";
 import { SourceBufferModule } from "../source_buffer/source_buffer";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { DashManifest } from "../dash_manifest/dash_manifest";
-import type { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
+import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
+import { SegmentOrder } from "../segment_order/segment_order";
 
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
-  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> { }
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
+  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -33,7 +34,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -70,7 +71,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, currentPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -113,15 +114,15 @@ export namespace BufferManager {
 
   export type AddInitParams =
     | {
-      playlist: DashManifest.Playlist;
-      mimeType: Codec.MimeType.Type;
-    }
+        playlist: DashManifest.Playlist;
+        mimeType: Codec.MimeType.Type;
+      }
     | {
-      playlist: DashManifest.Playlist;
-      sourceBuffer: SourceBuffer;
-    };
+        playlist: DashManifest.Playlist;
+        sourceBuffer: SourceBuffer;
+      };
   export const addInit = (self: Type, params: AddInitParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const initUrl = params.playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
@@ -136,7 +137,7 @@ export namespace BufferManager {
         return yield* Effect.fail(new MissingByMimeType());
       }
 
-      SourceBufferModule.attachSegment(sourceBuffer, initSegment);
+      yield* SourceBufferModule.attachSegment(sourceBuffer, initSegment);
     });
 
   export const findFirstVideoBuffer = (self: Type) => {
@@ -146,25 +147,31 @@ export namespace BufferManager {
   };
 
   // note: may not end up being the best thing to pass around raw source buffers
-  export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) => {
-    return SourceBufferModule.attachSegment(sourceBuffer, segment);
-  };
+  export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) =>
+    Effect.gen(function* () {
+      return yield* SourceBufferModule.attachSegment(sourceBuffer, segment);
+    });
 
   type GetSourceBufferAhead = (sourceBuffer: SourceBuffer, currentTime: number) => number;
   const getSourceBufferAhead: GetSourceBufferAhead = (sourceBuffer, currentTime) => {
     const ranges = sourceBuffer.buffered;
     const EPSILON = 0.05;
 
+    const deltas = [];
     for (let i = 0; i < ranges.length; i++) {
       const start = ranges.start(i);
       const end = ranges.end(i);
+      console.log({
+        start,
+        end,
+      });
 
+      // if (currentTime >= start && currentTime <= end) {
       if (currentTime >= start - EPSILON && currentTime <= end + EPSILON) {
-        return Math.max(0, end - currentTime);
+        deltas.push(Math.max(0, end - currentTime));
       }
     }
-    // no buffer range exists yet (i.e. when first streaming segments)
-    return 0;
+    return deltas.length ? Math.max(...deltas) : 0;
   };
 
   export type BufferAheadByCodec = (
@@ -224,44 +231,63 @@ export namespace BufferManager {
     return behindTargetMap;
   };
 
-  export const clearVideoBuffer = (self: Type) => Effect.gen(function*(){
-    const videoBuffer = findFirstVideoBuffer(self)
-    if (!videoBuffer) {
-      yield* Effect.logInfo('failed to clear video buffer - buffer not found')
-      return
-    }
-    yield* SourceBufferModule.clearSourceBuffer(videoBuffer);
-  });
+  export const clearVideoBuffer = (self: Type) =>
+    Effect.gen(function* () {
+      const videoBuffer = findFirstVideoBuffer(self);
+      if (!videoBuffer) {
+        yield* Effect.logInfo("failed to clear video buffer - buffer not found");
+        return;
+      }
+      yield* SourceBufferModule.clearSourceBuffer(videoBuffer);
+    });
 
   // will have to deal with more than one buffer for audio -- and ordering is non existent in practice
   export const flushSegmentQueue = (
     self: Type,
     mimeTypes: MapIterator<Codec.MimeType.Type>,
     segmentQueue: SegmentFetchedQueue.Type,
-    // playlist: Ref.Ref<DashManifest.Playlist>,
+    playlist: Ref.Ref<DashManifest.Playlist>,
+    lastAppendedSegment: Ref.Ref<Map<Codec.MimeType.Type, number>>,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
+      const playlistValue = yield* Ref.get(playlist);
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
         Effect.map(Chunk.toArray),
-        // keep an eye on this. It might cause weird problems later. It would be better to eventually strictly insert in order into the queue
-        // but that is complexity that can be probably be punted in the short term
-        // Effect.map((data) => data.toSorted((d) => (d.segment.number > d.segment.number ? 1 : -1))),
+        Effect.map((arr) =>
+          arr
+            .filter((p) => playlistValue.attributes.NAME === p.playlistId)
+            .sort((a, b) => a.segment.number + b.segment.number),
+        ),
       );
+      console.log({flushed});
+
+      const isValid = yield* SegmentOrder.validateOrderedCandidates(lastAppendedSegment, {
+        candidates: flushed,
+      });
+
+      if (!isValid) {
+        yield* SegmentFetchedQueue.addMany(segmentQueue, flushed);
+        return;
+      }
+
       for (const mimeType of mimeTypes) {
         const buffer = self.buffers.get(mimeType);
         if (!buffer) {
           throw new Error(`invariant violation - no buffer exists for mime type ${mimeType}`);
         }
+        let lastUpdated: SegmentFetchedQueue.Queued | null = null;
         for (let i = 0; i < flushed.length; i++) {
           const f = flushed[i];
           if (f?.mimeType !== mimeType) {
             continue;
           }
-          if (buffer.updating) {
-            yield* SourceBufferModule.waitForUpdateEnd(buffer);
-          }
-          attachSegment(buffer, f.data);
+          lastUpdated = f;
+          yield* attachSegment(buffer, f.data);
         }
+          if (lastUpdated != null) {
+            console.log(lastUpdated.segment.number);
+            yield* Ref.update(lastAppendedSegment, (lastMap) => lastMap.set(mimeType, lastUpdated.segment.number));
+          }
       }
     });
 

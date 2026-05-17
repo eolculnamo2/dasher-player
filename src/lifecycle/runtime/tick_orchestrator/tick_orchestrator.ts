@@ -6,6 +6,7 @@ import type { SegmentPendingQueues } from "@/src/core/segment_pending_queues/seg
 import { Effect, Ref } from "effect";
 import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
+import type { Codec } from "@/src/core/codec/codec";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -19,6 +20,7 @@ export namespace TickOrchestrator {
     manifest: DashManifest.Type;
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
+    lastAppendedSegment: Ref.Ref<Map<Codec.MimeType.Type, number>>;
   };
   export const make = ({
     manifest,
@@ -31,6 +33,7 @@ export namespace TickOrchestrator {
     scheduler,
     cancelCurrentSegmentFetches,
     restartSegmentFetchWorker,
+    lastAppendedSegment,
   }: Params) =>
     Effect.gen(function* () {
       const currentTime = mediaElement.currentTime;
@@ -56,16 +59,23 @@ export namespace TickOrchestrator {
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
-          yield* restartSegmentFetchWorker;
           yield* BufferManager.clearVideoBuffer(buffer);
+          yield* restartSegmentFetchWorker;
         }
       }
 
-      yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);
+      yield* BufferManager.flushSegmentQueue(
+        buffer,
+        buffer.buffers.keys(),
+        segmentFetchedQueue,
+        currentPlaylist,
+        lastAppendedSegment,
+      );
 
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 
       yield* SegmentScheduler.tick(scheduler, {
+        buffer,
         manifest,
         currentPlaylist,
         segmentPendingQueue,

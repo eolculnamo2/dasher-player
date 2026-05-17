@@ -9,10 +9,10 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
-  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> { }
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
+  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> {}
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -24,7 +24,13 @@ export namespace SourceBufferModule {
   };
 
   // this is happy path only right now until we get a working video poc
-  export const attachSegment = (self: Type, segment: ArrayBuffer) => self.appendBuffer(segment);
+  export const attachSegment = (self: Type, segment: ArrayBuffer) =>
+    Effect.gen(function* () {
+      if (self.updating) {
+        yield* waitForUpdateEnd(self);
+      }
+      return self.appendBuffer(segment);
+    });
 
   export const waitForUpdateEnd = (
     sourceBuffer: SourceBuffer,
@@ -82,13 +88,22 @@ export namespace SourceBufferModule {
       self.addEventListener("updateend", onEnd);
       self.addEventListener("error", onError);
 
-      self.remove(start, end);
+      // this is insane to keep because order matters. Going to have to figure out how to manage this
+      // potentially at policy level
+      if (self.updating) {
+        waitForUpdateEnd(self).pipe(
+          Effect.tap(() => {
+            self.remove(start, end);
+            resume(Effect.void);
+          }),
+        );
+      }
     });
 
   export const clearSourceBuffer = (
     self: SourceBuffer,
   ): Effect.Effect<void, SourceBufferRemoveError> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (self.buffered.length === 0) {
         return;
       }

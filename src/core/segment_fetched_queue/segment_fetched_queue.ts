@@ -6,6 +6,7 @@ import type { Codec } from "../codec/codec";
 export namespace SegmentFetchedQueue {
   export type Queued = {
     data: ArrayBuffer;
+    playlistId: string;
     segment: DashManifest.DashSegment;
     mimeType: Codec.MimeType.Type;
   };
@@ -25,6 +26,11 @@ export namespace SegmentFetchedQueue {
   export const add = (self: Type, next: Queued) =>
     Effect.gen(function* () {
       yield* Queue.offer(self.queue, next);
+    });
+
+  export const addMany = (self: Type, next: Queued[]) =>
+    Effect.gen(function* () {
+      yield* Queue.offerAll(self.queue, next);
     });
 
   export const take = (self: Type) =>
