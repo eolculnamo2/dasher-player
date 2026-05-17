@@ -28,7 +28,7 @@ export namespace DashManifest {
 
   export const PlaylistAttributes = Schema.asSchema(
     Schema.Struct({
-      NAME: Schema.optional(Schema.String),
+      NAME: Schema.String,
       AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
       BANDWIDTH: Schema.Number,

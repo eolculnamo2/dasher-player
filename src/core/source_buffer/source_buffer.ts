@@ -9,9 +9,10 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> {}
+  }> { }
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
+  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> { }
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -55,5 +56,45 @@ export namespace SourceBufferModule {
       sourceBuffer.addEventListener("abort", onAbort, { once: true });
 
       return Effect.sync(cleanup);
+    });
+
+  type RemoveBufferParams = {
+    start: number;
+    end: number;
+  };
+  export const removeBuffer = (self: SourceBuffer, { start, end }: RemoveBufferParams) =>
+    Effect.async<void, SourceBufferRemoveError>((resume) => {
+      const onEnd = () => {
+        cleanup();
+        resume(Effect.void);
+      };
+
+      const onError = () => {
+        cleanup();
+        resume(Effect.fail(new SourceBufferRemoveError()));
+      };
+
+      const cleanup = () => {
+        self.removeEventListener("updateend", onEnd);
+        self.removeEventListener("error", onError);
+      };
+
+      self.addEventListener("updateend", onEnd);
+      self.addEventListener("error", onError);
+
+      self.remove(start, end);
+    });
+
+  export const clearSourceBuffer = (
+    self: SourceBuffer,
+  ): Effect.Effect<void, SourceBufferRemoveError> =>
+    Effect.gen(function*() {
+      if (self.buffered.length === 0) {
+        return;
+      }
+      yield* removeBuffer(self, {
+        start: 0,
+        end: self.buffered.end(self.buffered.length - 1),
+      });
     });
 }

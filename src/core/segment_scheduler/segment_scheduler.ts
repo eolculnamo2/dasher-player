@@ -44,6 +44,7 @@ export namespace SegmentScheduler {
   ) =>
     Effect.gen(function* () {
       const playlist = yield* Ref.get(currentPlaylist);
+      const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
         height: playlist.attributes.RESOLUTION?.height ?? 0,
         bandwidth: playlist.attributes.BANDWIDTH,
@@ -84,7 +85,11 @@ export namespace SegmentScheduler {
             continue;
           }
           self.fetchMap.set(segment.uri, { kind: "loading" });
-          yield* SegmentPendingQueues.add(segmentPendingQueue, kind, { mimeType, segment });
+          yield* SegmentPendingQueues.add(segmentPendingQueue, kind, {
+            mimeType,
+            segment,
+            playlistId,
+          });
         }
       }
 

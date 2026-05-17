@@ -9,8 +9,8 @@ import type { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetch
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
-  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
+  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> { }
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -33,7 +33,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -70,7 +70,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, currentPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -113,15 +113,15 @@ export namespace BufferManager {
 
   export type AddInitParams =
     | {
-        playlist: DashManifest.Playlist;
-        mimeType: Codec.MimeType.Type;
-      }
+      playlist: DashManifest.Playlist;
+      mimeType: Codec.MimeType.Type;
+    }
     | {
-        playlist: DashManifest.Playlist;
-        sourceBuffer: SourceBuffer;
-      };
+      playlist: DashManifest.Playlist;
+      sourceBuffer: SourceBuffer;
+    };
   export const addInit = (self: Type, params: AddInitParams) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const initUrl = params.playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
@@ -142,7 +142,7 @@ export namespace BufferManager {
   export const findFirstVideoBuffer = (self: Type) => {
     return self.buffers
       .entries()
-      .find(([key, value]) => Codec.MimeType.toString(key).startsWith("video"))?.[1];
+      .find(([key]) => Codec.MimeType.toString(key).startsWith("video"))?.[1];
   };
 
   // note: may not end up being the best thing to pass around raw source buffers
@@ -224,14 +224,23 @@ export namespace BufferManager {
     return behindTargetMap;
   };
 
+  export const clearVideoBuffer = (self: Type) => Effect.gen(function*(){
+    const videoBuffer = findFirstVideoBuffer(self)
+    if (!videoBuffer) {
+      yield* Effect.logInfo('failed to clear video buffer - buffer not found')
+      return
+    }
+    yield* SourceBufferModule.clearSourceBuffer(videoBuffer);
+  });
+
   // will have to deal with more than one buffer for audio -- and ordering is non existent in practice
   export const flushSegmentQueue = (
     self: Type,
     mimeTypes: MapIterator<Codec.MimeType.Type>,
     segmentQueue: SegmentFetchedQueue.Type,
-    playlist: Ref.Ref<DashManifest.Playlist>,
+    // playlist: Ref.Ref<DashManifest.Playlist>,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
         Effect.map(Chunk.toArray),
         // keep an eye on this. It might cause weird problems later. It would be better to eventually strictly insert in order into the queue

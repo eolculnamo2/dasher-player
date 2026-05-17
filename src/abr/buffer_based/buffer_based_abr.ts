@@ -6,8 +6,7 @@ import { Duration, Effect, Ref } from "effect";
 import { Hysteresis } from "../hysteresis/hysteresis";
 import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
 
-// first pass without hysteresis
-// to be called on segment complete?
+// to be called on segment complete
 export namespace BufferBasedAbr {
   export type NextRepresentationParams = {
     bufferManager: BufferManager.Type;

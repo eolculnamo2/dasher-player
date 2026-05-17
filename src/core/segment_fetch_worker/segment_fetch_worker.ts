@@ -1,8 +1,9 @@
-import { Chunk, Duration, Effect, Queue } from "effect";
+import { Chunk, Duration, Effect, Queue, Ref } from "effect";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { BufferManager } from "../buffer_manager/buffer_manager";
+import type { DashManifest } from "../dash_manifest/dash_manifest";
 
 // opportunities:
 // - differentiate between codec to see how much of each needs caught up (could prioritize by codec, and may queue per codec)i
@@ -19,6 +20,7 @@ export namespace SegmentFetchWorker {
     mediaElement: HTMLMediaElement;
     segmentPendingQueue: SegmentPendingQueues.Type;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
+    currentPlaylist: Ref.Ref<DashManifest.Playlist>;
   };
 
   const shouldSleep = (bufferRunway: Duration.Duration) =>
@@ -74,10 +76,12 @@ export namespace SegmentFetchWorker {
     mediaElement,
     segmentFetchedQueue,
     segmentPendingQueue,
+    currentPlaylist,
   }: SubscribeParams) => {
     return Effect.forever(
       Effect.gen(function* () {
         const currentTime = mediaElement.currentTime;
+        const playlist = yield* Ref.get(currentPlaylist);
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
         const videoMaxSegmentsPerLoop = getMaxSegmentsPerLoop(videoBufferRunway);

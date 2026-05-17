@@ -34,6 +34,7 @@ export namespace RuntimeOrchestrator {
           mediaElement,
           segmentFetchedQueue,
           segmentPendingQueue,
+          currentPlaylist,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
       const cancelCurrentSegmentFetches = Effect.gen(function* () {

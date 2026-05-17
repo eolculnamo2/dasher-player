@@ -57,15 +57,11 @@ export namespace TickOrchestrator {
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
           yield* restartSegmentFetchWorker;
+          yield* BufferManager.clearVideoBuffer(buffer);
         }
       }
 
-      yield* BufferManager.flushSegmentQueue(
-        buffer,
-        buffer.buffers.keys(),
-        segmentFetchedQueue,
-        currentPlaylist,
-      );
+      yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);
 
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
 
