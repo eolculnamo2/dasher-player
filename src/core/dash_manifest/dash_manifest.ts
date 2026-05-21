@@ -17,7 +17,7 @@ export namespace DashManifest {
 
   export const DashSegment = Schema.Struct({
     uri: Schema.String,
-    resolvedUri: Schema.optional(Schema.String),
+    resolvedUri: Schema.String,
     duration: Schema.optional(Schema.Number),
     map: DashSegmentMap,
     number: Schema.Number,

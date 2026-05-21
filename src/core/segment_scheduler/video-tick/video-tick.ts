@@ -22,6 +22,14 @@ export namespace VideoTick {
     Effect.gen(function* () {
       const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
       const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
+      const firstSegment = playlist.segments[0];
+      if (!firstSegment) {
+        console.warn("failed to schedule missing video segments");
+        return {
+          mimeType,
+          segments: [],
+        };
+      }
       if (!videoBuffer) {
         console.warn("unable to find video buffer");
         return {
@@ -30,8 +38,9 @@ export namespace VideoTick {
         };
       }
 
-      // if this works, refine and also make apply to audio
-      const bufferEnd = videoBuffer.buffered.length ? videoBuffer.buffered.end(0) : 0;
+      const bufferEnd = videoBuffer.buffered.length
+        ? videoBuffer.buffered.end(0)
+        : firstSegment.presentationTime;
       const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(

@@ -4,6 +4,8 @@ import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { BufferManager } from "../buffer_manager/buffer_manager";
 import { SegmentScheduler } from "../segment_scheduler/segment_scheduler";
+import type { DashManifest } from "../dash_manifest/dash_manifest";
+import { BufferZone } from "../buffer_zone/buffer_zone";
 
 // opportunities:
 // - differentiate between codec to see how much of each needs caught up (could prioritize by codec, and may queue per codec)i
@@ -21,6 +23,7 @@ export namespace SegmentFetchWorker {
     segmentPendingQueue: SegmentPendingQueues.Type;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
     scheduler: SegmentScheduler.Type;
+    manifest: DashManifest.Manifest;
   };
 
   const shouldSleep = (bufferRunway: Duration.Duration) =>
@@ -73,13 +76,14 @@ export namespace SegmentFetchWorker {
 
   export const subscribe = ({
     bufferManager,
+    manifest,
     mediaElement,
     segmentFetchedQueue,
     segmentPendingQueue,
     scheduler,
   }: SubscribeParams) => {
     return Effect.forever(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const currentTime = mediaElement.currentTime;
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
@@ -109,9 +113,17 @@ export namespace SegmentFetchWorker {
             if (pending.segment.resolvedUri == null) {
               return Effect.logWarning(`skipping segment with missing resolvedUri`);
             }
-            return SegmentFetcher.fetch(pending.segment.resolvedUri).pipe(
+            const playlist = manifest.playlists.find(p => p.attributes.NAME === pending.playlistId) ?? null;
+            if (playlist == null) {
+              console.warn(`Failed to find playlist id ${pending.playlistId} from ${manifest.playlists.map(p => p.attributes.NAME).join(' ')}`)
+            }
+            return SegmentFetcher.fetch({
+              segment: pending.segment,
+              playlist, 
+              bufferZone: BufferZone.get({bufferManager, manifest, mediaElement}),
+            }).pipe(
               Effect.flatMap((data) => {
-                scheduler.fetchMap.delete(pending.segment.uri);
+                scheduler.fetchMap.set(pending.segment.uri, {kind: 'complete'});
                 return SegmentFetchedQueue.add(segmentFetchedQueue, {
                   data,
                   playlistId: pending.playlistId,

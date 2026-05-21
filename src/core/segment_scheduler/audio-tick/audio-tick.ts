@@ -21,6 +21,14 @@ export namespace AudioTick {
           segments: [],
         };
       }
+      const firstSegment = playlist.segments[0];
+      if (!firstSegment) {
+        console.warn("failed to schedule missing audio segments");
+        return {
+          mimeType,
+          segments: [],
+        };
+      }
 
       const audioBuffer = BufferManager.findFirstAudioBuffer(buffer);
       if (!audioBuffer) {
@@ -31,7 +39,9 @@ export namespace AudioTick {
         };
       }
 
-      const bufferEnd = audioBuffer.buffered.length ? audioBuffer.buffered.end(0) : 0;
+      const bufferEnd = audioBuffer.buffered.length
+        ? audioBuffer.buffered.end(0)
+        : firstSegment.presentationTime;
       const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(
