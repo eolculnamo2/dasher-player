@@ -36,9 +36,8 @@ export namespace TickOrchestrator {
     lastAppendedSegment,
   }: Params) =>
     Effect.gen(function* () {
-      const playlistBefore = yield* Ref.get(currentPlaylist);
-
       if ((yield* segmentFetchedQueue.queue.size) > 0) {
+        const playlistBefore = yield* Ref.get(currentPlaylist);
         const nextPlaylist = yield* BufferBasedAbr.nextRepresentation({
           bufferManager: buffer,
           manifest,
@@ -47,23 +46,23 @@ export namespace TickOrchestrator {
           hysteresis,
         });
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
+          // todo move this into policy
           yield* Effect.logInfo(
             "distinct representation; clearing previous playlist scheduling state",
           );
-
           const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
           if (!videoBuffer) {
             throw new Error("Invariant violation: Unable to find video buffer for ABR switch");
           }
-          yield* BufferManager.addInit(buffer, {
-            playlist: nextPlaylist,
-            sourceBuffer: videoBuffer,
-          });
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
           yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
           scheduler.fetchMap.clear();
           yield* BufferManager.clearVideoBuffer(buffer);
+          yield* BufferManager.addInit(buffer, {
+            playlist: nextPlaylist,
+            sourceBuffer: videoBuffer,
+          });
           yield* restartSegmentFetchWorker;
         }
       }

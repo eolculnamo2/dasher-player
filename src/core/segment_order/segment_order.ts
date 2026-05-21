@@ -19,8 +19,7 @@ export namespace SegmentOrder {
     self: Ref.Ref<Type>,
     { candidates }: ValidateOrderedCandidatesParams,
   ) =>
-    Effect.gen(function* () {
-      const lastSegment = yield* Ref.get(self);
+    Effect.gen(function*() {
 
       const mimeTypes: Codec.MimeType.Type[] = [];
       for (const c of candidates) {
@@ -36,21 +35,25 @@ export namespace SegmentOrder {
       }));
 
       for (const n of orderedSegmentNumbers) {
-        const lastSegmentNumber = lastSegment.get(n.mimeType);
-        if (
-          lastSegmentNumber != null &&
-          n.segmentNumber != null &&
-          n.segmentNumber !== lastSegmentNumber + 1
-        ) {
-          console.log({
-            lastSegment,
-            orderedSegmentNumbers,
-          });
-          console.error(
-            `Invariant violation: unable to append segments in order - found ${n.segmentNumber}, but expected ${lastSegmentNumber + 1}... placing segments back in queue`,
-          );
-          return false;
-        }
+        yield* Ref.get(self).pipe(
+          Effect.map((lastSegment) => {
+            const lastSegmentNumber = lastSegment.get(n.mimeType);
+            if (
+              lastSegmentNumber != null &&
+              n.segmentNumber != null &&
+              n.segmentNumber !== lastSegmentNumber + 1
+            ) {
+              console.log({
+                lastSegment,
+                orderedSegmentNumbers,
+              });
+              console.error(
+                `Invariant violation: unable to append segments in order - found ${n.segmentNumber}, but expected ${lastSegmentNumber + 1}... placing segments back in queue`,
+              );
+              return false;
+            }
+          })
+        );
       }
       return true;
     });
