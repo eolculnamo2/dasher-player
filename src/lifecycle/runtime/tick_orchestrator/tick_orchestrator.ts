@@ -7,6 +7,7 @@ import { Effect, Ref } from "effect";
 import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
+import { RepresentationChangePolicy } from "@/src/policy/representation_change_policy/representation_change_policy";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -46,24 +47,15 @@ export namespace TickOrchestrator {
           hysteresis,
         });
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
-          // todo move this into policy
-          yield* Effect.logInfo(
-            "distinct representation; clearing previous playlist scheduling state",
-          );
-          const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
-          if (!videoBuffer) {
-            throw new Error("Invariant violation: Unable to find video buffer for ABR switch");
-          }
-          yield* Ref.update(currentPlaylist, () => nextPlaylist);
-          yield* cancelCurrentSegmentFetches;
-          yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
-          scheduler.fetchMap.clear();
-          yield* BufferManager.clearVideoBuffer(buffer);
-          yield* BufferManager.addInit(buffer, {
-            playlist: nextPlaylist,
-            sourceBuffer: videoBuffer,
+          yield* RepresentationChangePolicy.handleChange({
+            bufferManager: buffer,
+            currentPlaylist,
+            scheduler,
+            nextPlaylist,
+            segmentFetchedQueue,
+            restartSegmentFetchWorker,
+            cancelCurrentSegmentFetches,
           });
-          yield* restartSegmentFetchWorker;
         }
       }
 

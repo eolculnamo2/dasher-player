@@ -31,7 +31,7 @@ export namespace RuntimeOrchestrator {
       const scheduler = SegmentScheduler.make();
       const httpClient = yield* HttpClient.HttpClient;
 
-      const segmentFetchWorker = () =>
+      const segmentFetchWorker: Effect.Effect<void> = () =>
         SegmentFetchWorker.subscribe({
           bufferManager,
           mediaElement,

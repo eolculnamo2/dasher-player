@@ -9,10 +9,10 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
-  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> { }
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
+  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> {}
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -25,7 +25,7 @@ export namespace SourceBufferModule {
 
   // this is happy path only right now until we get a working video poc
   export const attachSegment = (self: Type, segment: ArrayBuffer) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (self.updating) {
         yield* waitForUpdateEnd(self);
       }
@@ -48,13 +48,13 @@ export namespace SourceBufferModule {
       };
 
       const onError = (cause: unknown) => {
-        console.error('failed to wait for source buffer update end')
+        console.error("failed to wait for source buffer update end");
         cleanup();
         resume(Effect.fail(new SourceBufferUpdateError({ cause })));
       };
 
       const onAbort = () => {
-        console.warn('source buffer update aborted')
+        console.warn("source buffer update aborted");
         cleanup();
         resume(Effect.fail(new SourceBufferAbortError()));
       };
@@ -107,7 +107,7 @@ export namespace SourceBufferModule {
   export const clearSourceBuffer = (
     self: SourceBuffer,
   ): Effect.Effect<void, SourceBufferRemoveError> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (self.buffered.length === 0) {
         return;
       }
