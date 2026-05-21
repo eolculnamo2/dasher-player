@@ -19,7 +19,7 @@ export namespace SegmentOrder {
     self: Ref.Ref<Type>,
     { candidates }: ValidateOrderedCandidatesParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const lastSegment = yield* Ref.get(self);
 
       const mimeTypes: Codec.MimeType.Type[] = [];

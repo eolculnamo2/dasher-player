@@ -19,7 +19,7 @@ export namespace VideoTick {
     mimeType,
     neededBuffer,
   }: HandleParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
       const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
       if (!videoBuffer) {

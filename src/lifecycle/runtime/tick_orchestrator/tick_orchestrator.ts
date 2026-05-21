@@ -35,29 +35,24 @@ export namespace TickOrchestrator {
     restartSegmentFetchWorker,
     lastAppendedSegment,
   }: Params) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlistBefore = yield* Ref.get(currentPlaylist);
-
-      // ABR on segment fetch
-      // still identifying things that have to happen when ABR switches.
-      // Domain-wise, there is overlap between ABR switch and normal representation switch.
-      // Representation switch is probably its own module; ABR either composes it, or passes data to it after
-      // We also still have problems to work through. When we cancel segment requests, we don't reschedule them at the new ABR option, AND
-      // we don't currently allow them to finish. Policies need to be developed around this to make this work well (Preferably with multiple options).
-      // definitely have work cut out to make this working and sane -- ideally elegant. Lesson learned - I should not have combined representation switch work with ABR
 
       if ((yield* segmentFetchedQueue.queue.size) > 0) {
         const nextPlaylist = yield* BufferBasedAbr.nextRepresentation({
           bufferManager: buffer,
-          segmentFetchedQueue,
           manifest,
           mediaElement,
           currentPlaylist,
           hysteresis,
         });
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
+          yield* Effect.logInfo(
+            "distinct representation; clearing previous playlist scheduling state",
+          );
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
+          yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
           scheduler.fetchMap.clear();
           yield* BufferManager.clearVideoBuffer(buffer);
           yield* restartSegmentFetchWorker;

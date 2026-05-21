@@ -12,7 +12,7 @@ export namespace AudioTick {
   };
 
   export const handle = ({ manifest, buffer, mimeType, neededBuffer }: HandleParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = DashManifest.getAudioPlaylist(manifest);
       if (!playlist) {
         yield* Effect.logDebug("no audio playlist.. skipping");

@@ -18,7 +18,7 @@ export namespace SegmentPendingQueues {
   };
 
   export const make = () =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const videoQueue = yield* Queue.unbounded<Queued>();
       const audioQueue = yield* Queue.unbounded<Queued>();
       return {
@@ -42,17 +42,17 @@ export namespace SegmentPendingQueues {
   };
 
   export const add = (self: Type, kind: Kind, next: Queued) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Queue.offer(getQueue(self, kind), next);
     });
 
   export const takeAll = (self: Type, kind: Kind) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return yield* Queue.takeAll(getQueue(self, kind));
     });
 
   export const clear = (self: Type, kind?: Kind) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (kind) {
         yield* Queue.takeAll(getQueue(self, kind));
         return;

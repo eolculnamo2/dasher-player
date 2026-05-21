@@ -22,6 +22,7 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
+      // will make a RuntimeState module to manage these and potentially look at state machines
       const lastAppendedSegment = yield* SegmentOrder.make();
       const currentPlaylist = yield* Ref.make(recommendedPlaylist);
       const hysteresis = yield* Ref.make(Hysteresis.make());

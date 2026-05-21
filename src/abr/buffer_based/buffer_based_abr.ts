@@ -4,13 +4,11 @@ import { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
 import { BufferZone } from "@/src/core/buffer_zone/buffer_zone";
 import { Duration, Effect, Ref } from "effect";
 import { Hysteresis } from "../hysteresis/hysteresis";
-import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
 
 // to be called on segment complete
 export namespace BufferBasedAbr {
   export type NextRepresentationParams = {
     bufferManager: BufferManager.Type;
-    segmentFetchedQueue: SegmentFetchedQueue.Type;
     manifest: DashManifest.Type;
     mediaElement: HTMLMediaElement;
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
@@ -18,7 +16,6 @@ export namespace BufferBasedAbr {
   };
   export const nextRepresentation = ({
     bufferManager,
-    segmentFetchedQueue,
     manifest,
     mediaElement,
     currentPlaylist,
@@ -55,7 +52,6 @@ export namespace BufferBasedAbr {
           current: playlist,
           by: 2,
         });
-        yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
         yield* BufferManager.addInit(bufferManager, {
           playlist: next,
           sourceBuffer: videoBuffer,
@@ -70,7 +66,6 @@ export namespace BufferBasedAbr {
           current: playlist,
           by: 1,
         });
-        yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
         yield* BufferManager.addInit(bufferManager, {
           playlist: next,
           sourceBuffer: videoBuffer,
@@ -91,7 +86,6 @@ export namespace BufferBasedAbr {
           current: playlist,
           by: 1,
         });
-        yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
         yield* BufferManager.addInit(bufferManager, {
           playlist: next,
           sourceBuffer: videoBuffer,
