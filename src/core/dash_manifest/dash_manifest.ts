@@ -28,7 +28,7 @@ export namespace DashManifest {
 
   export const PlaylistAttributes = Schema.asSchema(
     Schema.Struct({
-      NAME: Schema.optional(Schema.String),
+      NAME: Schema.String,
       AUDIO: Schema.optional(Schema.String),
       CODECS: Schema.optional(Schema.String),
       BANDWIDTH: Schema.Number,
@@ -169,15 +169,16 @@ export namespace DashManifest {
 
   export const getSegmentsToFetch = (
     segments: DashSegment[],
-    nextSegmentIndex: number,
+    nextSegmentNumber: number,
     secondsNeeded: number,
   ): DashSegment[] => {
     const result: DashSegment[] = [];
     let accumulated = 0;
 
-    for (let i = nextSegmentIndex; i < segments.length; i++) {
-      const segment = segments[i];
+    for (let i = nextSegmentNumber; i < segments.length; i++) {
+      const segment = segments.find((s) => s.number === i);
       if (!segment) {
+        console.log(`unable to find segment ${i}`);
         continue;
       }
 
@@ -248,6 +249,9 @@ export namespace DashManifest {
     }
     return next;
   };
+
+  export const arePlaylistsDistinct = (p1: Playlist, p2: Playlist) =>
+    p1.attributes.RESOLUTION?.height !== p2.attributes.RESOLUTION?.height;
 
   // TODO once live support is added
   export const isLive = (_self: Type) => false;

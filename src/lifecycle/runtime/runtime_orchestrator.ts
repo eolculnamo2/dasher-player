@@ -9,6 +9,7 @@ import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_
 import { SegmentFetchWorker } from "@/src/core/segment_fetch_worker/segment_fetch_worker";
 import { MediaEventHandler } from "@/src/core/media_event_handler/media_event_handler";
 import { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
+import { SegmentOrder } from "@/src/core/segment_order/segment_order";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
@@ -21,6 +22,8 @@ export namespace RuntimeOrchestrator {
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
     Effect.gen(function* () {
+      // will make a RuntimeState module to manage these and potentially look at state machines
+      const lastAppendedSegment = yield* SegmentOrder.make();
       const currentPlaylist = yield* Ref.make(recommendedPlaylist);
       const hysteresis = yield* Ref.make(Hysteresis.make());
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
@@ -34,22 +37,25 @@ export namespace RuntimeOrchestrator {
           mediaElement,
           segmentFetchedQueue,
           segmentPendingQueue,
+          scheduler,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
+      const cancelCurrentSegmentFetches = Effect.gen(function* () {
+        yield* Fiber.interrupt(segmentFetchWorkerFiber);
+      });
+      const restartSegmentFetchWorker = Effect.gen(function* () {
+        // TODO: move worker lifecycle management behind a long-lived control channel.
+        scheduler.fetchMap.clear();
+        segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
+      });
 
       yield* MediaEventHandler.subscribe({
         mediaElement,
         segmentFetchedQueue,
         segmentPendingQueue,
         scheduler,
-        cancelCurrentSegmentFetches: Effect.gen(function* () {
-          yield* Fiber.interrupt(segmentFetchWorkerFiber);
-        }),
-        restartSegmentFetchWorker: Effect.gen(function* () {
-          // TODO: move worker lifecycle management behind a long-lived control channel.
-          console.log("restarting");
-          segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
-        }),
+        cancelCurrentSegmentFetches,
+        restartSegmentFetchWorker,
       });
 
       while (true) {
@@ -62,6 +68,9 @@ export namespace RuntimeOrchestrator {
           scheduler,
           manifest,
           hysteresis,
+          cancelCurrentSegmentFetches,
+          restartSegmentFetchWorker,
+          lastAppendedSegment,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
         yield* Hysteresis.incrementTimeInBuffer(hysteresis, RUNTIME_INTERVAL);

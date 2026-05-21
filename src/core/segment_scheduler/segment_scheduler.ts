@@ -10,6 +10,7 @@ import { Codec } from "../codec/codec";
 import { VideoTick } from "./video-tick/video-tick";
 import { AudioTick } from "./audio-tick/audio-tick";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
+import type { BufferManager } from "../buffer_manager/buffer_manager";
 
 export namespace SegmentScheduler {
   namespace SegmentStatus {
@@ -30,20 +31,20 @@ export namespace SegmentScheduler {
     });
 
   export type TickParams = {
+    buffer: BufferManager.Type;
     manifest: DashManifest.Type;
     segmentPendingQueue: SegmentPendingQueues.Type;
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
-    currentTime: number;
   };
 
-  // make the scheduler as nice as you can 💪
   export const tick = (
     self: Type,
-    { manifest, segmentPendingQueue, currentPlaylist, requested, currentTime }: TickParams,
+    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested }: TickParams,
   ) =>
     Effect.gen(function* () {
       const playlist = yield* Ref.get(currentPlaylist);
+      const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
         height: playlist.attributes.RESOLUTION?.height ?? 0,
         bandwidth: playlist.attributes.BANDWIDTH,
@@ -54,7 +55,7 @@ export namespace SegmentScheduler {
             return VideoTick.handle({
               manifest,
               preferredPlaylist,
-              currentTime,
+              buffer,
               mimeType,
               neededBuffer,
             });
@@ -62,7 +63,7 @@ export namespace SegmentScheduler {
           if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
             return AudioTick.handle({
               manifest,
-              currentTime,
+              buffer,
               mimeType,
               neededBuffer,
             });
@@ -81,10 +82,15 @@ export namespace SegmentScheduler {
           }
           const kind = SegmentPendingQueues.kindFromMimeType(mimeType);
           if (!kind) {
+            // if (!kind) {
             continue;
           }
           self.fetchMap.set(segment.uri, { kind: "loading" });
-          yield* SegmentPendingQueues.add(segmentPendingQueue, kind, { mimeType, segment });
+          yield* SegmentPendingQueues.add(segmentPendingQueue, kind, {
+            mimeType,
+            segment,
+            playlistId,
+          });
         }
       }
 

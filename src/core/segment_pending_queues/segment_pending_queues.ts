@@ -9,6 +9,7 @@ export namespace SegmentPendingQueues {
   export type Queued = {
     mimeType: Codec.MimeType.Type;
     segment: DashManifest.DashSegment;
+    playlistId: string;
   };
 
   export type Type = {

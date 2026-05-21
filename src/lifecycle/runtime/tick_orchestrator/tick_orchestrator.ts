@@ -1,11 +1,12 @@
 import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
-import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
-import type { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
+import { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
+import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
 import { SegmentScheduler } from "@/src/core/segment_scheduler/segment_scheduler";
 import type { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_pending_queues";
 import { Effect, Ref } from "effect";
 import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
+import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -17,6 +18,9 @@ export namespace TickOrchestrator {
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     hysteresis: Ref.Ref<Hysteresis.Type>;
     manifest: DashManifest.Type;
+    cancelCurrentSegmentFetches: Effect.Effect<void>;
+    restartSegmentFetchWorker: Effect.Effect<void>;
+    lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
   };
   export const make = ({
     manifest,
@@ -27,31 +31,52 @@ export namespace TickOrchestrator {
     currentPlaylist,
     hysteresis,
     scheduler,
+    cancelCurrentSegmentFetches,
+    restartSegmentFetchWorker,
+    lastAppendedSegment,
   }: Params) =>
     Effect.gen(function* () {
-      const currentTime = mediaElement.currentTime;
+      const playlistBefore = yield* Ref.get(currentPlaylist);
 
-      // ABR on segment fetch
       if ((yield* segmentFetchedQueue.queue.size) > 0) {
-        yield* BufferBasedAbr.nextRepresentation({
+        const nextPlaylist = yield* BufferBasedAbr.nextRepresentation({
           bufferManager: buffer,
           manifest,
           mediaElement,
           currentPlaylist,
           hysteresis,
         });
+        if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
+          yield* Effect.logInfo(
+            "distinct representation; clearing previous playlist scheduling state",
+          );
+          yield* Ref.update(currentPlaylist, () => nextPlaylist);
+          yield* cancelCurrentSegmentFetches;
+          yield* SegmentFetchedQueue.clear(segmentFetchedQueue);
+          scheduler.fetchMap.clear();
+          yield* BufferManager.clearVideoBuffer(buffer);
+          yield* restartSegmentFetchWorker;
+        }
       }
 
-      yield* BufferManager.flushSegmentQueue(buffer, buffer.buffers.keys(), segmentFetchedQueue);
+      yield* BufferManager.flushSegmentQueue(
+        buffer,
+        segmentFetchedQueue,
+        currentPlaylist,
+        lastAppendedSegment,
+      );
 
-      const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(buffer, currentTime);
+      const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(
+        buffer,
+        mediaElement.currentTime,
+      );
 
       yield* SegmentScheduler.tick(scheduler, {
+        buffer,
         manifest,
         currentPlaylist,
         segmentPendingQueue,
         requested: bufferBehindMap,
-        currentTime,
       });
     });
 }
