@@ -83,7 +83,7 @@ export namespace SegmentFetchWorker {
     scheduler,
   }: SubscribeParams) => {
     return Effect.forever(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const currentTime = mediaElement.currentTime;
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
@@ -113,17 +113,20 @@ export namespace SegmentFetchWorker {
             if (pending.segment.resolvedUri == null) {
               return Effect.logWarning(`skipping segment with missing resolvedUri`);
             }
-            const playlist = manifest.playlists.find(p => p.attributes.NAME === pending.playlistId) ?? null;
+            const playlist =
+              manifest.playlists.find((p) => p.attributes.NAME === pending.playlistId) ?? null;
             if (playlist == null) {
-              console.warn(`Failed to find playlist id ${pending.playlistId} from ${manifest.playlists.map(p => p.attributes.NAME).join(' ')}`)
+              console.warn(
+                `Failed to find playlist id ${pending.playlistId} from ${manifest.playlists.map((p) => p.attributes.NAME).join(" ")}`,
+              );
             }
             return SegmentFetcher.fetch({
               segment: pending.segment,
-              playlist, 
-              bufferZone: BufferZone.get({bufferManager, manifest, mediaElement}),
+              playlist,
+              bufferZone: BufferZone.get({ bufferManager, manifest, mediaElement }),
             }).pipe(
               Effect.flatMap((data) => {
-                scheduler.fetchMap.set(pending.segment.uri, {kind: 'complete'});
+                scheduler.fetchMap.set(pending.segment.uri, { kind: "complete" });
                 return SegmentFetchedQueue.add(segmentFetchedQueue, {
                   data,
                   playlistId: pending.playlistId,
@@ -131,6 +134,12 @@ export namespace SegmentFetchWorker {
                   mimeType: pending.mimeType,
                 });
               }),
+              Effect.catchTag("RequestCancelledCalled", () =>
+                Effect.sync(() => {
+                  console.log("request cancelled, removing from fetchMap");
+                  scheduler.fetchMap.delete(pending.segment.uri);
+                }).pipe(Effect.zipRight(Effect.interrupt)),
+              ),
             );
           },
           { concurrency: "unbounded", discard: true },

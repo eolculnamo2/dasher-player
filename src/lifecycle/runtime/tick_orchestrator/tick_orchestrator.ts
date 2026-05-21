@@ -50,6 +50,15 @@ export namespace TickOrchestrator {
           yield* Effect.logInfo(
             "distinct representation; clearing previous playlist scheduling state",
           );
+
+          const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
+          if (!videoBuffer) {
+            throw new Error("Invariant violation: Unable to find video buffer for ABR switch");
+          }
+          yield* BufferManager.addInit(buffer, {
+            playlist: nextPlaylist,
+            sourceBuffer: videoBuffer,
+          });
           yield* Ref.update(currentPlaylist, () => nextPlaylist);
           yield* cancelCurrentSegmentFetches;
           yield* SegmentFetchedQueue.clear(segmentFetchedQueue);

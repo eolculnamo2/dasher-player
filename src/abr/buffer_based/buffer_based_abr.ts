@@ -52,10 +52,6 @@ export namespace BufferBasedAbr {
           current: playlist,
           by: 2,
         });
-        yield* BufferManager.addInit(bufferManager, {
-          playlist: next,
-          sourceBuffer: videoBuffer,
-        });
         return next;
       }
       // attempt drop 1
@@ -65,10 +61,6 @@ export namespace BufferBasedAbr {
         const next = DashManifest.decreasePlaylistBy(manifest, {
           current: playlist,
           by: 1,
-        });
-        yield* BufferManager.addInit(bufferManager, {
-          playlist: next,
-          sourceBuffer: videoBuffer,
         });
         return next;
       }
@@ -85,10 +77,6 @@ export namespace BufferBasedAbr {
         const next = DashManifest.increasePlaylistBy(manifest, {
           current: playlist,
           by: 1,
-        });
-        yield* BufferManager.addInit(bufferManager, {
-          playlist: next,
-          sourceBuffer: videoBuffer,
         });
         return next;
       }

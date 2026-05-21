@@ -15,7 +15,10 @@ import type { BufferManager } from "../buffer_manager/buffer_manager";
 export namespace SegmentScheduler {
   namespace SegmentStatus {
     // successful loads get pushed straight to queue and removed from map
-    export type Type = { kind: 'complete' } | { kind: "loading" } | { kind: "error"; e: SegmentFetcher.SegmentError };
+    export type Type =
+      | { kind: "complete" }
+      | { kind: "loading" }
+      | { kind: "error"; e: SegmentFetcher.SegmentError };
   }
 
   export type Type = {
@@ -42,7 +45,7 @@ export namespace SegmentScheduler {
     self: Type,
     { buffer, manifest, segmentPendingQueue, currentPlaylist, requested }: TickParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = yield* Ref.get(currentPlaylist);
       const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
@@ -82,7 +85,6 @@ export namespace SegmentScheduler {
           }
           const kind = SegmentPendingQueues.kindFromMimeType(mimeType);
           if (!kind) {
-            // if (!kind) {
             continue;
           }
           self.fetchMap.set(segment.uri, { kind: "loading" });

@@ -10,8 +10,8 @@ import { SegmentOrder } from "../segment_order/segment_order";
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
-  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> { }
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
+  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -34,7 +34,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -71,7 +71,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, currentPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -114,15 +114,15 @@ export namespace BufferManager {
 
   export type AddInitParams =
     | {
-      playlist: DashManifest.Playlist;
-      mimeType: Codec.MimeType.Type;
-    }
+        playlist: DashManifest.Playlist;
+        mimeType: Codec.MimeType.Type;
+      }
     | {
-      playlist: DashManifest.Playlist;
-      sourceBuffer: SourceBuffer;
-    };
+        playlist: DashManifest.Playlist;
+        sourceBuffer: SourceBuffer;
+      };
   export const addInit = (self: Type, params: AddInitParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const initUrl = params.playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
@@ -154,7 +154,7 @@ export namespace BufferManager {
 
   // note: may not end up being the best thing to pass around raw source buffers
   export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return yield* SourceBufferModule.attachSegment(sourceBuffer, segment);
     });
 
@@ -234,7 +234,7 @@ export namespace BufferManager {
   };
 
   export const clearVideoBuffer = (self: Type) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const videoBuffer = findFirstVideoBuffer(self);
       if (!videoBuffer) {
         yield* Effect.logInfo("failed to clear video buffer - buffer not found");
@@ -249,7 +249,7 @@ export namespace BufferManager {
     playlist: Ref.Ref<DashManifest.Playlist>,
     lastAppendedSegment: Ref.Ref<Map<Codec.MimeType.Type, number>>,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const mimeTypes = self.buffers.keys();
       const playlistValue = yield* Ref.get(playlist);
       const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
@@ -287,8 +287,8 @@ export namespace BufferManager {
           if (f?.mimeType !== mimeType) {
             continue;
           }
-          lastUpdated = f;
           yield* attachSegment(buffer, f.data);
+          lastUpdated = f;
         }
         if (lastUpdated != null) {
           yield* Ref.update(lastAppendedSegment, (lastMap) =>
