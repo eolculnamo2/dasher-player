@@ -21,7 +21,7 @@ export namespace RuntimeOrchestrator {
     recommendedPlaylist: DashManifest.Playlist;
   };
   export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       // will make a RuntimeState module to manage these and potentially look at state machines
       const lastAppendedSegment = yield* SegmentOrder.make();
       const currentPlaylist = yield* Ref.make(recommendedPlaylist);
@@ -31,7 +31,7 @@ export namespace RuntimeOrchestrator {
       const scheduler = SegmentScheduler.make();
       const httpClient = yield* HttpClient.HttpClient;
 
-      const segmentFetchWorker: Effect.Effect<void> = () =>
+      const segmentFetchWorker = () =>
         SegmentFetchWorker.subscribe({
           bufferManager,
           mediaElement,
@@ -41,10 +41,10 @@ export namespace RuntimeOrchestrator {
           manifest,
         }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient));
       let segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());
-      const cancelCurrentSegmentFetches = Effect.gen(function* () {
+      const cancelCurrentSegmentFetches = Effect.gen(function*() {
         yield* Fiber.interrupt(segmentFetchWorkerFiber);
       });
-      const restartSegmentFetchWorker = Effect.gen(function* () {
+      const restartSegmentFetchWorker = Effect.gen(function*() {
         // TODO: move worker lifecycle management behind a long-lived control channel.
         scheduler.fetchMap.clear();
         segmentFetchWorkerFiber = yield* Effect.forkDaemon(segmentFetchWorker());

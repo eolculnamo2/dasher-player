@@ -63,7 +63,7 @@ export namespace SegmentFetcher {
           }),
           Effect.retry({
             while: (error) =>
-              error._tag !== "NonRetryableSegmentError" && error._tag !== "RequestCancelledCalled",
+              error._tag !== "NonRetryableSegmentError",
             schedule: Schedule.exponential(Duration.millis(100)).pipe(
               Schedule.union(Schedule.spaced(Duration.seconds(5))),
               Schedule.compose(Schedule.forever),
@@ -75,7 +75,7 @@ export namespace SegmentFetcher {
       }).pipe(
         Effect.catchAllCause((cause) =>
           Cause.isInterrupted(cause)
-            ? Effect.fail(new RequestCancelledCalled({ url }))
+            ? Effect.fail<SegmentError>(new RequestCancelledCalled({ url }))
             : Effect.failCause(cause),
         ),
       );
