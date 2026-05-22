@@ -39,11 +39,12 @@ export namespace SegmentScheduler {
     segmentPendingQueue: SegmentPendingQueues.Type;
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
+    mediaElement: HTMLMediaElement;
   };
 
   export const tick = (
     self: Type,
-    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested }: TickParams,
+    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested, mediaElement }: TickParams,
   ) =>
     Effect.gen(function* () {
       const playlist = yield* Ref.get(currentPlaylist);
@@ -61,6 +62,7 @@ export namespace SegmentScheduler {
               buffer,
               mimeType,
               neededBuffer,
+              mediaElement,
             });
           }
           if (Codec.MimeType.toString(mimeType).startsWith("audio")) {
@@ -69,6 +71,7 @@ export namespace SegmentScheduler {
               buffer,
               mimeType,
               neededBuffer,
+              mediaElement,
             });
           }
           return Effect.sync(() => ({

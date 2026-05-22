@@ -62,8 +62,7 @@ export namespace SegmentFetcher {
               }),
           }),
           Effect.retry({
-            while: (error) =>
-              error._tag !== "NonRetryableSegmentError",
+            while: (error) => error._tag !== "NonRetryableSegmentError",
             schedule: Schedule.exponential(Duration.millis(100)).pipe(
               Schedule.union(Schedule.spaced(Duration.seconds(5))),
               Schedule.compose(Schedule.forever),

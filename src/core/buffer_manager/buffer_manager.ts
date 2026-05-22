@@ -243,6 +243,16 @@ export namespace BufferManager {
       yield* SourceBufferModule.clearSourceBuffer(videoBuffer);
     });
 
+  export const clearAudioBuffer = (self: Type) =>
+    Effect.gen(function* () {
+      const audioBuffer = findFirstAudioBuffer(self);
+      if (!audioBuffer) {
+        yield* Effect.logInfo("failed to clear audio buffer - buffer not found");
+        return;
+      }
+      yield* SourceBufferModule.clearSourceBuffer(audioBuffer);
+    });
+
   export const flushSegmentQueue = (
     self: Type,
     segmentQueue: SegmentFetchedQueue.Type,

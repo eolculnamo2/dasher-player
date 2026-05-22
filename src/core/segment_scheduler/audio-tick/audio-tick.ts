@@ -2,6 +2,7 @@ import { Duration, Effect } from "effect";
 import type { Codec } from "../../codec/codec";
 import { DashManifest } from "../../dash_manifest/dash_manifest";
 import { BufferManager } from "../../buffer_manager/buffer_manager";
+import { MediaElement } from "../../media_element/media_element";
 
 export namespace AudioTick {
   export type HandleParams = {
@@ -9,10 +10,17 @@ export namespace AudioTick {
     buffer: BufferManager.Type;
     mimeType: Codec.MimeType.Type;
     neededBuffer: Duration.Duration;
+    mediaElement: HTMLMediaElement;
   };
 
-  export const handle = ({ manifest, buffer, mimeType, neededBuffer }: HandleParams) =>
-    Effect.gen(function* () {
+  export const handle = ({
+    mediaElement,
+    manifest,
+    buffer,
+    mimeType,
+    neededBuffer,
+  }: HandleParams) =>
+    Effect.gen(function*() {
       const playlist = DashManifest.getAudioPlaylist(manifest);
       if (!playlist) {
         yield* Effect.logDebug("no audio playlist.. skipping");
@@ -39,9 +47,15 @@ export namespace AudioTick {
         };
       }
 
-      const bufferEnd = audioBuffer.buffered.length
-        ? audioBuffer.buffered.end(0)
-        : firstSegment.presentationTime;
+      const range = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
+      const bufferEnd = range?.end ?? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
+
+
+      // would do it this way if we could reliably enforce only one buffered
+      // const bufferEnd = MediaElement.inBufferRange(mediaElement, mediaElement.currentTime)
+      //   ? audioBuffer.buffered.end(0)
+      //   : Math.max(firstSegment.presentationTime, mediaElement.currentTime);
+
       const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(

@@ -34,7 +34,7 @@ export namespace RepresentationChangePolicy {
     restartSegmentFetchWorker,
     cancelCurrentSegmentFetches,
   }: ChangeParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Effect.logInfo("distinct representation; clearing previous playlist scheduling state");
       const videoBuffer = BufferManager.findFirstVideoBuffer(bufferManager);
       if (!videoBuffer) {
@@ -48,13 +48,14 @@ export namespace RepresentationChangePolicy {
         SegmentPendingQueues.clear(segmentPendingQueue),
         SegmentScheduler.clear(scheduler),
         Ref.set(lastAppendedSegment, new Map()),
+        Ref.update(currentPlaylist, () => nextPlaylist),
+        BufferManager.clearVideoBuffer(bufferManager),
+        BufferManager.clearAudioBuffer(bufferManager),
+        BufferManager.addInit(bufferManager, {
+          playlist: nextPlaylist,
+          sourceBuffer: videoBuffer,
+        }),
+        restartSegmentFetchWorker,
       ]);
-      yield* Ref.update(currentPlaylist, () => nextPlaylist);
-      yield* BufferManager.clearVideoBuffer(bufferManager);
-      yield* BufferManager.addInit(bufferManager, {
-        playlist: nextPlaylist,
-        sourceBuffer: videoBuffer,
-      });
-      yield* restartSegmentFetchWorker;
     });
 }

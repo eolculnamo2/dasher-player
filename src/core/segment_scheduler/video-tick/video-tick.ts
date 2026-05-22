@@ -2,6 +2,7 @@ import { Duration, Effect } from "effect";
 import type { Codec } from "../../codec/codec";
 import { DashManifest } from "../../dash_manifest/dash_manifest";
 import { BufferManager } from "../../buffer_manager/buffer_manager";
+import { MediaElement } from "../../media_element/media_element";
 
 export namespace VideoTick {
   export type HandleParams = {
@@ -10,6 +11,7 @@ export namespace VideoTick {
     preferredPlaylist: { height: number; bandwidth: number };
     mimeType: Codec.MimeType.Type;
     neededBuffer: Duration.Duration;
+    mediaElement: HTMLMediaElement;
   };
 
   export const handle = ({
@@ -18,8 +20,9 @@ export namespace VideoTick {
     preferredPlaylist,
     mimeType,
     neededBuffer,
+    mediaElement,
   }: HandleParams) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
       const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
       const firstSegment = playlist.segments[0];
@@ -38,9 +41,9 @@ export namespace VideoTick {
         };
       }
 
-      const bufferEnd = videoBuffer.buffered.length
-        ? videoBuffer.buffered.end(0)
-        : firstSegment.presentationTime;
+      const range = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
+      const bufferEnd = range?.end ?? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
+
       const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(

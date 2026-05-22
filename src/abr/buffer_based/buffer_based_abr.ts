@@ -21,7 +21,7 @@ export namespace BufferBasedAbr {
     currentPlaylist,
     hysteresis,
   }: NextRepresentationParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const hysteresisValue = yield* Ref.get(hysteresis);
       const timeInBuffer = hysteresisValue.timeInBuffer;
 
@@ -46,7 +46,9 @@ export namespace BufferBasedAbr {
       // it's had time and should be at reservoir by now, if not, drop currentPlaylist
       // attempt drop 2
       if (zone === "critical") {
-        yield* Effect.logInfo("buffer in critical, going down abr ladder up to two times if available");
+        yield* Effect.logInfo(
+          "buffer in critical, going down abr ladder up to two times if available",
+        );
         yield* Hysteresis.resetTimeInBuffer(hysteresis);
         const next = DashManifest.decreasePlaylistBy(manifest, {
           current: playlist,
