@@ -54,6 +54,7 @@ export namespace TickOrchestrator {
             nextPlaylist,
             segmentFetchedQueue,
             segmentPendingQueue,
+            lastAppendedSegment,
             restartSegmentFetchWorker,
             cancelCurrentSegmentFetches,
           });

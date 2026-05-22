@@ -7,6 +7,7 @@ import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
 import { SegmentFetchedQueue } from "@/src/core/segment_fetched_queue/segment_fetched_queue";
 import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_pending_queues";
+import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 import { SegmentScheduler } from "@/src/core/segment_scheduler/segment_scheduler";
 import { Effect, Ref } from "effect";
 
@@ -18,6 +19,7 @@ export namespace RepresentationChangePolicy {
     scheduler: SegmentScheduler.Type;
     segmentFetchedQueue: SegmentFetchedQueue.Type;
     segmentPendingQueue: SegmentPendingQueues.Type;
+    lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
   };
@@ -28,6 +30,7 @@ export namespace RepresentationChangePolicy {
     nextPlaylist,
     segmentFetchedQueue,
     segmentPendingQueue,
+    lastAppendedSegment,
     restartSegmentFetchWorker,
     cancelCurrentSegmentFetches,
   }: ChangeParams) =>
@@ -44,6 +47,7 @@ export namespace RepresentationChangePolicy {
         SegmentFetchedQueue.clear(segmentFetchedQueue),
         SegmentPendingQueues.clear(segmentPendingQueue),
         SegmentScheduler.clear(scheduler),
+        Ref.set(lastAppendedSegment, new Map()),
       ]);
       yield* Ref.update(currentPlaylist, () => nextPlaylist);
       yield* BufferManager.clearVideoBuffer(bufferManager);
