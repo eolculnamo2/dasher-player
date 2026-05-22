@@ -1,4 +1,4 @@
-import { Chunk, Duration, Effect, Queue, Ref } from "effect";
+import { Duration, Effect } from "effect";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
@@ -89,18 +89,17 @@ export namespace SegmentFetchWorker {
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");
         const videoMaxSegmentsPerLoop = getMaxSegmentsPerLoop(videoBufferRunway);
         const audioMaxSegmentsPerLoop = getMaxSegmentsPerLoop(audioBufferRunway);
-        const videoPending = yield* Queue.takeUpTo(
-          segmentPendingQueue.videoQueue,
+        const videoPending = yield* SegmentPendingQueues.takeUpTo(
+          segmentPendingQueue,
+          "video",
           videoMaxSegmentsPerLoop,
         );
-        const audioPending = yield* Queue.takeUpTo(
-          segmentPendingQueue.audioQueue,
+        const audioPending = yield* SegmentPendingQueues.takeUpTo(
+          segmentPendingQueue,
+          "audio",
           audioMaxSegmentsPerLoop,
         );
-        const pendingSegments = interleave(
-          Chunk.toArray(videoPending),
-          Chunk.toArray(audioPending),
-        );
+        const pendingSegments = interleave(videoPending, audioPending);
 
         if (pendingSegments.length === 0) {
           yield* Effect.sleep(DEFAULT_FETCH_WORKER_SLEEP);

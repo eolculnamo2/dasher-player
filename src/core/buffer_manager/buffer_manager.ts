@@ -1,4 +1,4 @@
-import { Data, Duration, Effect, Queue, Chunk, Ref } from "effect";
+import { Data, Duration, Effect, Ref } from "effect";
 import { Codec } from "../codec/codec";
 import { MediaSourceModule } from "../media_source/media_source";
 import { SourceBufferModule } from "../source_buffer/source_buffer";
@@ -252,14 +252,9 @@ export namespace BufferManager {
     Effect.gen(function* () {
       const mimeTypes = self.buffers.keys();
       const playlistValue = yield* Ref.get(playlist);
-      const flushed = yield* Queue.takeAll(segmentQueue.queue).pipe(
-        Effect.map(Chunk.toArray),
-        Effect.map((arr) =>
-          arr
-            .filter((p) => playlistValue.attributes.NAME === p.playlistId)
-            .sort((a, b) => a.segment.number - b.segment.number),
-        ),
-      );
+      const flushed = (yield* SegmentFetchedQueue.takeAll(segmentQueue))
+        .filter((p) => playlistValue.attributes.NAME === p.playlistId)
+        .sort((a, b) => a.segment.number - b.segment.number);
 
       const lastSegmentMap = yield* Ref.get(lastAppendedSegment);
       const appendable = flushed.filter((p) => {

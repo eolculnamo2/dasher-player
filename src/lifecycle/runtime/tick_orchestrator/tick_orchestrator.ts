@@ -37,7 +37,7 @@ export namespace TickOrchestrator {
     lastAppendedSegment,
   }: Params) =>
     Effect.gen(function* () {
-      if ((yield* segmentFetchedQueue.queue.size) > 0) {
+      if ((yield* SegmentFetchedQueue.size(segmentFetchedQueue)) > 0) {
         const playlistBefore = yield* Ref.get(currentPlaylist);
         const nextPlaylist = yield* BufferBasedAbr.nextRepresentation({
           bufferManager: buffer,

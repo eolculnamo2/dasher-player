@@ -1,8 +1,7 @@
-import { Effect, Queue } from "effect";
+import { Chunk, Effect, Queue, Ref } from "effect";
 import type { DashManifest } from "../dash_manifest/dash_manifest";
 import { Codec } from "../codec/codec";
 
-// would be nice if this enforced more invariants eventually (i.e. ordering etc)
 export namespace SegmentPendingQueues {
   export type Kind = "video" | "audio";
 
@@ -13,22 +12,33 @@ export namespace SegmentPendingQueues {
   };
 
   export type Type = {
-    videoQueue: Queue.Queue<Queued>;
-    audioQueue: Queue.Queue<Queued>;
+    videoQueue: Ref.Ref<Queue.Queue<Queued>>;
+    audioQueue: Ref.Ref<Queue.Queue<Queued>>;
   };
 
-  export const make = () =>
+  export const make = (): Effect.Effect<Type> =>
     Effect.gen(function* () {
       const videoQueue = yield* Queue.unbounded<Queued>();
       const audioQueue = yield* Queue.unbounded<Queued>();
       return {
-        videoQueue,
-        audioQueue,
+        videoQueue: yield* Ref.make(videoQueue),
+        audioQueue: yield* Ref.make(audioQueue),
       };
     });
 
-  export const getQueue = (self: Type, kind: Kind) =>
+  const getQueueRef = (self: Type, kind: Kind) =>
     kind === "video" ? self.videoQueue : self.audioQueue;
+
+  const getQueue = (self: Type, kind: Kind): Effect.Effect<Queue.Queue<Queued>> =>
+    Ref.get(getQueueRef(self, kind));
+
+  const clearQueue = (queueRef: Ref.Ref<Queue.Queue<Queued>>): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const nextQueue = yield* Queue.unbounded<Queued>();
+      const previousQueue = yield* Ref.modify(queueRef, (queue) => [queue, nextQueue]);
+      yield* Queue.shutdown(previousQueue);
+      yield* Queue.awaitShutdown(previousQueue);
+    });
 
   export const kindFromMimeType = (mimeType: Codec.MimeType.Type): Kind | undefined => {
     const mimeTypeString = Codec.MimeType.toString(mimeType);
@@ -41,23 +51,30 @@ export namespace SegmentPendingQueues {
     return undefined;
   };
 
-  export const add = (self: Type, kind: Kind, next: Queued) =>
+  export const add = (self: Type, kind: Kind, next: Queued): Effect.Effect<void> =>
     Effect.gen(function* () {
-      yield* Queue.offer(getQueue(self, kind), next);
+      const queue = yield* getQueue(self, kind);
+      yield* Queue.offer(queue, next);
     });
 
-  export const takeAll = (self: Type, kind: Kind) =>
+  export const takeAll = (self: Type, kind: Kind): Effect.Effect<Queued[]> =>
     Effect.gen(function* () {
-      return yield* Queue.takeAll(getQueue(self, kind));
+      const queue = yield* getQueue(self, kind);
+      return yield* Queue.takeAll(queue).pipe(Effect.map(Chunk.toArray));
     });
 
-  export const clear = (self: Type, kind?: Kind) =>
+  export const takeUpTo = (self: Type, kind: Kind, max: number): Effect.Effect<Queued[]> =>
+    Effect.gen(function* () {
+      const queue = yield* getQueue(self, kind);
+      return yield* Queue.takeUpTo(queue, max).pipe(Effect.map(Chunk.toArray));
+    });
+
+  export const clear = (self: Type, kind?: Kind): Effect.Effect<void> =>
     Effect.gen(function* () {
       if (kind) {
-        yield* Queue.takeAll(getQueue(self, kind));
+        yield* clearQueue(getQueueRef(self, kind));
         return;
       }
-      yield* Queue.takeAll(self.videoQueue);
-      yield* Queue.takeAll(self.audioQueue);
+      yield* Effect.all([clearQueue(self.videoQueue), clearQueue(self.audioQueue)]);
     });
 }
