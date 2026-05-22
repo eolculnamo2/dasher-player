@@ -68,6 +68,8 @@ export namespace TickOrchestrator {
         lastAppendedSegment,
       );
 
+      yield* BufferManager.cleanupOldBuffer(buffer, mediaElement);
+
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(
         buffer,
         mediaElement.currentTime,

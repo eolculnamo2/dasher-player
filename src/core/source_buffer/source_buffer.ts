@@ -9,10 +9,10 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> { }
+  }> {}
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
-  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> { }
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
+  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> {}
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -25,7 +25,7 @@ export namespace SourceBufferModule {
 
   // this is happy path only right now until we get a working video poc
   export const attachSegment = (self: Type, segment: ArrayBuffer) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       if (self.updating) {
         yield* waitForUpdateEnd(self);
       }
@@ -71,43 +71,90 @@ export namespace SourceBufferModule {
     end: number;
   };
   export const removeBuffer = (self: SourceBuffer, { start, end }: RemoveBufferParams) =>
-    Effect.async<void, SourceBufferRemoveError>((resume) => {
-      const onEnd = () => {
-        cleanup();
-        resume(Effect.void);
-      };
+    Effect.gen(function* () {
+      if (end <= start) {
+        return;
+      }
 
-      const onError = () => {
-        cleanup();
-        resume(Effect.fail(new SourceBufferRemoveError()));
-      };
-
-      const cleanup = () => {
-        self.removeEventListener("updateend", onEnd);
-        self.removeEventListener("error", onError);
-      };
-
-      self.addEventListener("updateend", onEnd);
-      self.addEventListener("error", onError);
-
-      // this is insane to keep because order matters. Going to have to figure out how to manage this
-      // potentially at policy level
       if (self.updating) {
-        waitForUpdateEnd(self).pipe(
-          Effect.tap(() => {
-            self.remove(start, end);
-            resume(Effect.void);
-          }),
-        );
-      } else {
-        resume(Effect.void);
+        yield* waitForUpdateEnd(self);
+      }
+
+      yield* Effect.async<void, SourceBufferRemoveError>((resume) => {
+        const onEnd = () => {
+          cleanup();
+          resume(Effect.void);
+        };
+
+        const onError = () => {
+          cleanup();
+          resume(Effect.fail(new SourceBufferRemoveError()));
+        };
+
+        const cleanup = () => {
+          self.removeEventListener("updateend", onEnd);
+          self.removeEventListener("error", onError);
+        };
+
+        self.addEventListener("updateend", onEnd, { once: true });
+        self.addEventListener("error", onError, { once: true });
+
+        try {
+          self.remove(start, end);
+        } catch {
+          cleanup();
+          resume(Effect.fail(new SourceBufferRemoveError()));
+        }
+
+        return Effect.sync(cleanup);
+      });
+    });
+
+  type BufferedRange = {
+    start: number;
+    end: number;
+  };
+
+  type CleanupOldBufferParams = {
+    currentRange: BufferedRange;
+    currentTime: number;
+    retainBehindSeconds?: number;
+  };
+  export const cleanupOldBuffer = (
+    self: SourceBuffer,
+    { currentRange, currentTime, retainBehindSeconds = 8 }: CleanupOldBufferParams,
+  ): Effect.Effect<
+    void,
+    SourceBufferRemoveError | SourceBufferUpdateError | SourceBufferAbortError
+  > =>
+    Effect.gen(function* () {
+      const ranges = Array.from({ length: self.buffered.length }, (_, index) => ({
+        start: self.buffered.start(index),
+        end: self.buffered.end(index),
+      }));
+      const retainFrom = Math.max(currentRange.start, currentTime - retainBehindSeconds);
+
+      for (const range of ranges) {
+        if (range.end <= currentRange.start || range.start >= currentRange.end) {
+          yield* removeBuffer(self, range);
+          continue;
+        }
+
+        const trimEnd = Math.min(range.end, retainFrom);
+        const trimStart = Math.max(range.start, currentRange.start);
+        if (trimEnd > trimStart) {
+          yield* removeBuffer(self, { start: trimStart, end: trimEnd });
+        }
       }
     });
 
   export const clearSourceBuffer = (
     self: SourceBuffer,
-  ): Effect.Effect<void, SourceBufferRemoveError> =>
-    Effect.gen(function*() {
+  ): Effect.Effect<
+    void,
+    SourceBufferRemoveError | SourceBufferUpdateError | SourceBufferAbortError
+  > =>
+    Effect.gen(function* () {
       if (self.buffered.length === 0) {
         return;
       }

@@ -4,6 +4,7 @@ import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_
 import { SegmentScheduler } from "../segment_scheduler/segment_scheduler";
 import type { SegmentOrder } from "../segment_order/segment_order";
 import { BufferManager } from "../buffer_manager/buffer_manager";
+import { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 
 export namespace MediaEventHandler {
   type Params = {
@@ -15,6 +16,7 @@ export namespace MediaEventHandler {
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
     lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
+    hysteresis: Ref.Ref<Hysteresis.Type>;
   };
 
   // fix this on seek next
@@ -27,6 +29,7 @@ export namespace MediaEventHandler {
     cancelCurrentSegmentFetches,
     restartSegmentFetchWorker,
     lastAppendedSegment,
+    hysteresis,
   }: Params) =>
     Effect.acquireRelease(
       Effect.sync(() => {
@@ -42,6 +45,7 @@ export namespace MediaEventHandler {
                 );
               }
               yield* cancelCurrentSegmentFetches;
+              Hysteresis.resetTimeInBuffer(hysteresis);
               yield* Effect.all([
                 SegmentFetchedQueue.clear(segmentFetchedQueue),
                 SegmentPendingQueues.clear(segmentPendingQueue),

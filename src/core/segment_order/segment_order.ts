@@ -19,7 +19,7 @@ export namespace SegmentOrder {
     self: Ref.Ref<Type>,
     { candidates }: ValidateOrderedCandidatesParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const mimeTypes: Codec.MimeType.Type[] = [];
       for (const c of candidates) {
         if (mimeTypes.includes(c.mimeType)) {
@@ -46,7 +46,7 @@ export namespace SegmentOrder {
                 lastSegment,
                 orderedSegmentNumbers,
               });
-              console.error(
+              console.warn(
                 `Invariant violation: unable to append segments in order - found ${n.segmentNumber}, but expected ${lastSegmentNumber + 1}... placing segments back in queue`,
               );
               return false;

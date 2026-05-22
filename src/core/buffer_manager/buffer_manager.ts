@@ -6,6 +6,7 @@ import { SegmentFetcher } from "@/src/fetchers/segment_fetcher/segment_fetcher";
 import { DashManifest } from "../dash_manifest/dash_manifest";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { SegmentOrder } from "../segment_order/segment_order";
+import { MediaElement } from "../media_element/media_element";
 
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
@@ -232,6 +233,26 @@ export namespace BufferManager {
     }
     return behindTargetMap;
   };
+
+  export const cleanupOldBuffer = (self: Type, mediaElement: HTMLMediaElement) =>
+    Effect.gen(function* () {
+      const currentRange = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
+      if (!currentRange) {
+        if (mediaElement.buffered.length > 1) {
+          yield* Effect.logWarning(
+            `unable to clean up old buffer; current time ${mediaElement.currentTime} is not in any buffered range`,
+          );
+        }
+        return;
+      }
+
+      for (const sourceBuffer of self.buffers.values()) {
+        yield* SourceBufferModule.cleanupOldBuffer(sourceBuffer, {
+          currentRange,
+          currentTime: mediaElement.currentTime,
+        });
+      }
+    });
 
   export const clearVideoBuffer = (self: Type) =>
     Effect.gen(function* () {

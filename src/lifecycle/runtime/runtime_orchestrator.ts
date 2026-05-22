@@ -59,6 +59,7 @@ export namespace RuntimeOrchestrator {
         cancelCurrentSegmentFetches,
         restartSegmentFetchWorker,
         lastAppendedSegment,
+        hysteresis
       });
 
       while (true) {
