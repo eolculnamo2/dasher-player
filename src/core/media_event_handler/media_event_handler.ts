@@ -45,8 +45,8 @@ export namespace MediaEventHandler {
                 );
               }
               yield* cancelCurrentSegmentFetches;
-              Hysteresis.resetTimeInBuffer(hysteresis);
               yield* Effect.all([
+                Hysteresis.resetTimeInBuffer(hysteresis),
                 SegmentFetchedQueue.clear(segmentFetchedQueue),
                 SegmentPendingQueues.clear(segmentPendingQueue),
                 SegmentScheduler.clear(scheduler),
