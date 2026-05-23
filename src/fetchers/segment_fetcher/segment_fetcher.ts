@@ -89,7 +89,7 @@ export namespace SegmentFetcher {
     const bandwidth = playlist.attributes.BANDWIDTH;
     switch (bufferZone) {
       case "healthy":
-        return Duration.seconds(
+        return Duration.millis(
           clamp({
             min: 6_000,
             max: 12_000,
@@ -97,7 +97,7 @@ export namespace SegmentFetcher {
           }),
         );
       case "reservoir":
-        return Duration.seconds(
+        return Duration.millis(
           clamp({
             min: 4_000,
             max: 10_000,
@@ -105,7 +105,7 @@ export namespace SegmentFetcher {
           }),
         );
       case "caution":
-        return Duration.seconds(
+        return Duration.millis(
           clamp({
             min: 4_000,
             max: 6_000,
@@ -113,7 +113,7 @@ export namespace SegmentFetcher {
           }),
         );
       case "critical":
-        return Duration.seconds(
+        return Duration.millis(
           clamp({
             min: 4_000,
             max: 4_000,

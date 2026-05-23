@@ -45,13 +45,17 @@ export namespace RecommendedBitratePolicy {
 
     const candidates = representations
       .filter((rep) => rep.attributes.BANDWIDTH <= targetBitrate)
-      .filter((rep) => rep.attributes.RESOLUTION.width <= maxUsefulWidth)
+      .filter(
+        (rep) => rep.attributes.RESOLUTION && rep.attributes.RESOLUTION.width <= maxUsefulWidth,
+      )
       .sort((a, b) => b.attributes.BANDWIDTH - a.attributes.BANDWIDTH);
 
     const recommended =
       candidates[0] ??
       representations
-        .filter((rep) => rep.attributes.RESOLUTION.width <= maxUsefulWidth)
+        .filter(
+          (rep) => rep.attributes.RESOLUTION && rep.attributes.RESOLUTION.width <= maxUsefulWidth,
+        )
         .sort((a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH)[0] ??
       representations.sort((a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH)[0];
 

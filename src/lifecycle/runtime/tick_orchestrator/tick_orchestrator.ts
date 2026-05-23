@@ -82,6 +82,7 @@ export namespace TickOrchestrator {
         segmentPendingQueue,
         requested: bufferBehindMap,
         mediaElement,
+        lastAppendedSegment,
       });
     });
 }

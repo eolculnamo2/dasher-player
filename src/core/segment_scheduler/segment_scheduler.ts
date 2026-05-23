@@ -11,6 +11,7 @@ import { VideoTick } from "./video-tick/video-tick";
 import { AudioTick } from "./audio-tick/audio-tick";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import type { BufferManager } from "../buffer_manager/buffer_manager";
+import { SegmentOrder } from "../segment_order/segment_order";
 
 export namespace SegmentScheduler {
   namespace SegmentStatus {
@@ -40,13 +41,22 @@ export namespace SegmentScheduler {
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
     mediaElement: HTMLMediaElement;
+    lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
   };
 
   export const tick = (
     self: Type,
-    { buffer, manifest, segmentPendingQueue, currentPlaylist, requested, mediaElement }: TickParams,
+    {
+      buffer,
+      manifest,
+      segmentPendingQueue,
+      currentPlaylist,
+      requested,
+      mediaElement,
+      lastAppendedSegment,
+    }: TickParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const playlist = yield* Ref.get(currentPlaylist);
       const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
@@ -75,13 +85,17 @@ export namespace SegmentScheduler {
             });
           }
           return Effect.sync(() => ({
+            isNewBuffer: false,
             mimeType,
             segments: [],
           }));
         }),
       );
 
-      for (const { mimeType, segments } of segmentGroups) {
+      for (const { mimeType, segments, isNewBuffer } of segmentGroups) {
+        if (isNewBuffer) {
+          yield* SegmentOrder.resetByMimeType(lastAppendedSegment, mimeType);
+        }
         for (const segment of segments) {
           if (self.fetchMap.get(segment.uri)) {
             continue;

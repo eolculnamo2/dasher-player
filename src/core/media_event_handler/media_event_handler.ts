@@ -44,17 +44,22 @@ export namespace MediaEventHandler {
                   "Invariant violation: Unable to find video buffer for ABR switch",
                 );
               }
-              yield* cancelCurrentSegmentFetches;
-              yield* Effect.all([
-                Hysteresis.resetTimeInBuffer(hysteresis),
-                SegmentFetchedQueue.clear(segmentFetchedQueue),
-                SegmentPendingQueues.clear(segmentPendingQueue),
-                SegmentScheduler.clear(scheduler),
-                Ref.set(lastAppendedSegment, new Map()),
-                BufferManager.clearVideoBuffer(bufferManager),
-                BufferManager.clearAudioBuffer(bufferManager),
-                restartSegmentFetchWorker,
-              ]);
+              yield* Effect.all(
+                [
+                  cancelCurrentSegmentFetches,
+                  Hysteresis.resetTimeInBuffer(hysteresis),
+                  SegmentFetchedQueue.clear(segmentFetchedQueue),
+                  SegmentPendingQueues.clear(segmentPendingQueue),
+                  SegmentScheduler.clear(scheduler),
+                  Ref.set(lastAppendedSegment, new Map()),
+                  BufferManager.clearVideoBuffer(bufferManager),
+                  BufferManager.clearAudioBuffer(bufferManager),
+                  restartSegmentFetchWorker,
+                ],
+                {
+                  concurrency: 1,
+                },
+              );
             }),
           );
         };

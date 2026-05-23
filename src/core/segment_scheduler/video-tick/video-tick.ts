@@ -22,7 +22,7 @@ export namespace VideoTick {
     neededBuffer,
     mediaElement,
   }: HandleParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = DashManifest.getPlaylistByHeight(manifest, preferredPlaylist.height);
       const videoBuffer = BufferManager.findFirstVideoBuffer(buffer);
       const firstSegment = playlist.segments[0];
@@ -42,7 +42,10 @@ export namespace VideoTick {
       }
 
       const range = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
-      const bufferEnd = range?.end ?? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
+      const isNewBuffer = range == null;
+      const bufferEnd = isNewBuffer
+        ? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
+        : range.end;
 
       const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
       if (!currentSegment) {
@@ -52,6 +55,7 @@ export namespace VideoTick {
       }
 
       return {
+        isNewBuffer,
         mimeType,
         segments: DashManifest.getSegmentsToFetch(
           playlist.segments,

@@ -15,11 +15,18 @@ export namespace SegmentOrder {
       segment: DashManifest.DashSegment;
     }>;
   };
+
+  export const reset = (self: Ref.Ref<Type>) => Ref.set(self, new Map());
+  export const resetByMimeType = (self: Ref.Ref<Type>, mimeType: Codec.MimeType.Type) =>
+    Ref.update(self, (prev) => {
+      prev.delete(mimeType);
+      return prev;
+    });
   export const validateOrderedCandidates = (
     self: Ref.Ref<Type>,
     { candidates }: ValidateOrderedCandidatesParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const mimeTypes: Codec.MimeType.Type[] = [];
       for (const c of candidates) {
         if (mimeTypes.includes(c.mimeType)) {
@@ -34,7 +41,7 @@ export namespace SegmentOrder {
       }));
 
       for (const n of orderedSegmentNumbers) {
-        yield* Ref.get(self).pipe(
+        const passes = yield* Ref.get(self).pipe(
           Effect.map((lastSegment) => {
             const lastSegmentNumber = lastSegment.get(n.mimeType);
             if (
@@ -51,8 +58,12 @@ export namespace SegmentOrder {
               );
               return false;
             }
+            return true;
           }),
         );
+        if (!passes) {
+          return false;
+        }
       }
       return true;
     });

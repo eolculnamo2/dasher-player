@@ -6,8 +6,10 @@
   "module": "main.ts",
   "scripts": {
     "start": "bun run ./src/main.ts",
+    "test": "bun test",
     "build": "bun build ./src/main.ts --outdir ./build --target browser",
     "build:prod": "bun build ./src/main.ts --outdir ./build --minify --target browser --sourcemap=none",
+    "tsc": "tsc --noEmit",
     "format": "oxfmt",
     "format:check": "oxfmt --check"
   },

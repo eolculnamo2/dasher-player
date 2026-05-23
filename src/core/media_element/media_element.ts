@@ -31,5 +31,5 @@ export namespace MediaElement {
     }
 
     return null;
-  }
+  };
 }

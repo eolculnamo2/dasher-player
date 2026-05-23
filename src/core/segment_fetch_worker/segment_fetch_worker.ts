@@ -83,7 +83,7 @@ export namespace SegmentFetchWorker {
     scheduler,
   }: SubscribeParams) => {
     return Effect.forever(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const currentTime = mediaElement.currentTime;
         const videoBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "video");
         const audioBufferRunway = getBufferRunwayByQueueKind(bufferManager, currentTime, "audio");

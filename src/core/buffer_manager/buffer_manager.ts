@@ -240,8 +240,9 @@ export namespace BufferManager {
       if (!currentRange) {
         if (mediaElement.buffered.length > 1) {
           yield* Effect.logWarning(
-            `unable to clean up old buffer; current time ${mediaElement.currentTime} is not in any buffered range`,
+            `clearing all buffers; current time ${mediaElement.currentTime} is not in any buffered range`,
           );
+          yield* clearAllBuffers(self);
         }
         return;
       }
@@ -251,6 +252,13 @@ export namespace BufferManager {
           currentRange,
           currentTime: mediaElement.currentTime,
         });
+      }
+    });
+
+  export const clearAllBuffers = (self: Type) =>
+    Effect.gen(function* () {
+      for (const [_, buffer] of self.buffers) {
+        yield* SourceBufferModule.clearSourceBuffer(buffer);
       }
     });
 

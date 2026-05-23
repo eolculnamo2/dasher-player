@@ -20,7 +20,7 @@ export namespace AudioTick {
     mimeType,
     neededBuffer,
   }: HandleParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = DashManifest.getAudioPlaylist(manifest);
       if (!playlist) {
         yield* Effect.logDebug("no audio playlist.. skipping");
@@ -48,8 +48,10 @@ export namespace AudioTick {
       }
 
       const range = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
-      const bufferEnd = range?.end ?? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
-
+      const isNewBuffer = range == null;
+      const bufferEnd = isNewBuffer
+        ? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
+        : range.end;
 
       // would do it this way if we could reliably enforce only one buffered
       // const bufferEnd = MediaElement.inBufferRange(mediaElement, mediaElement.currentTime)
@@ -64,6 +66,7 @@ export namespace AudioTick {
       }
 
       return {
+        isNewBuffer,
         mimeType,
         segments: DashManifest.getSegmentsToFetch(
           playlist.segments,

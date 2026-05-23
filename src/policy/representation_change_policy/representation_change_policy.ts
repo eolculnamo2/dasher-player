@@ -42,20 +42,25 @@ export namespace RepresentationChangePolicy {
           "Invariant violation: Unable to find video buffer for ABR switch",
         );
       }
-      yield* cancelCurrentSegmentFetches;
-      yield* Effect.all([
-        SegmentFetchedQueue.clear(segmentFetchedQueue),
-        SegmentPendingQueues.clear(segmentPendingQueue),
-        SegmentScheduler.clear(scheduler),
-        Ref.set(lastAppendedSegment, new Map()),
-        Ref.update(currentPlaylist, () => nextPlaylist),
-        BufferManager.clearVideoBuffer(bufferManager),
-        BufferManager.clearAudioBuffer(bufferManager),
-        BufferManager.addInit(bufferManager, {
-          playlist: nextPlaylist,
-          sourceBuffer: videoBuffer,
-        }),
-        restartSegmentFetchWorker,
-      ]);
+      yield* Effect.all(
+        [
+          cancelCurrentSegmentFetches,
+          SegmentFetchedQueue.clear(segmentFetchedQueue),
+          SegmentPendingQueues.clear(segmentPendingQueue),
+          SegmentScheduler.clear(scheduler),
+          Ref.set(lastAppendedSegment, new Map()),
+          Ref.update(currentPlaylist, () => nextPlaylist),
+          BufferManager.clearVideoBuffer(bufferManager),
+          BufferManager.clearAudioBuffer(bufferManager),
+          BufferManager.addInit(bufferManager, {
+            playlist: nextPlaylist,
+            sourceBuffer: videoBuffer,
+          }),
+          restartSegmentFetchWorker,
+        ],
+        {
+          concurrency: 1,
+        },
+      );
     });
 }
