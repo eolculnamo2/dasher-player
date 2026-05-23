@@ -5,7 +5,7 @@ import { HttpClient, HttpClientError, HttpClientResponse } from "@effect/platfor
 import type { SegmentUrl } from "@/src/core/segment_url/segment_url";
 import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
 import type { BufferZone } from "@/src/core/buffer_zone/buffer_zone";
-import { clamp } from "@/src/utils/clamp";
+import { clamp } from "@/src/utils/clamp/clamp";
 
 export namespace SegmentFetcher {
   export class RetryableSegmentError extends Data.TaggedError("RetryableSegmentError")<{
