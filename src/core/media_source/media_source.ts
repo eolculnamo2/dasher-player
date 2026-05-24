@@ -90,7 +90,9 @@ export namespace MediaSourceModule {
       Effect.tapError((e) => Effect.logError(`failed to mount media source! ${e}`)),
     );
 
-  const waitForSourceOpen = (mediaSource: MediaSource): Effect.Effect<void, MediaSourceOpenError> =>
+  export const waitForSourceOpen = (
+    mediaSource: MediaSource,
+  ): Effect.Effect<void, MediaSourceOpenError> =>
     Effect.async<void, MediaSourceOpenError>((resume) => {
       const cleanup = () => {
         mediaSource.removeEventListener("sourceopen", onSourceOpen);

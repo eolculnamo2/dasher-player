@@ -10,6 +10,7 @@ import { SegmentFetchWorker } from "@/src/core/segment_fetch_worker/segment_fetc
 import { MediaEventHandler } from "@/src/core/media_event_handler/media_event_handler";
 import { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 import { SegmentOrder } from "@/src/core/segment_order/segment_order";
+import type { MediaSourceModule } from "@/src/core/media_source/media_source";
 
 const RUNTIME_INTERVAL = Duration.millis(200);
 
@@ -18,9 +19,16 @@ export namespace RuntimeOrchestrator {
     bufferManager: BufferManager.Type;
     mediaElement: HTMLMediaElement;
     manifest: DashManifest.Type;
+    mediaSource: MediaSourceModule.OpenedMediaSource.Type;
     recommendedPlaylist: DashManifest.Playlist;
   };
-  export const make = ({ bufferManager, manifest, mediaElement, recommendedPlaylist }: Params) =>
+  export const make = ({
+    bufferManager,
+    mediaSource,
+    manifest,
+    mediaElement,
+    recommendedPlaylist,
+  }: Params) =>
     Effect.gen(function* () {
       // will make a RuntimeState module to manage these and potentially look at state machines
       const lastAppendedSegment = yield* SegmentOrder.make();
@@ -75,6 +83,7 @@ export namespace RuntimeOrchestrator {
           cancelCurrentSegmentFetches,
           restartSegmentFetchWorker,
           lastAppendedSegment,
+          mediaSource,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);
         yield* Hysteresis.incrementTimeInBuffer(hysteresis, RUNTIME_INTERVAL);

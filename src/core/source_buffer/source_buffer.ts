@@ -75,6 +75,9 @@ export namespace SourceBufferModule {
       Duration.seconds(3),
     );
 
+  export const waitForOpenBuffer = (self: Type) =>
+    self.updating ? waitForUpdateEnd(self) : Effect.void;
+
   type RemoveBufferParams = {
     start: number;
     end: number;
@@ -82,6 +85,7 @@ export namespace SourceBufferModule {
   export const removeBuffer = (self: SourceBuffer, { start, end }: RemoveBufferParams) =>
     logIfSlow(
       Effect.gen(function* () {
+        console.log("in here", start, end);
         if (end <= start) {
           return;
         }
@@ -110,8 +114,10 @@ export namespace SourceBufferModule {
           self.addEventListener("error", onError, { once: true });
 
           try {
+            console.log("removing", start, end);
             self.remove(start, end);
-          } catch {
+          } catch (e) {
+            console.log("oh no", e);
             cleanup();
             resume(Effect.fail(new SourceBufferRemoveError()));
           }

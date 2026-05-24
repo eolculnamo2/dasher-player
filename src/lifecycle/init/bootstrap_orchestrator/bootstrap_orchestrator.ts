@@ -22,7 +22,7 @@ export namespace BootstrapOrchestrator {
 
       // if more needs to happen here, move to the MediaSourceModule
       if (manifest.duration) {
-        mediaSource.duration = manifest.duration;
+        mediaSource.duration = DashManifest.getEffectiveDuration(manifest);
       }
 
       // Find recommended playlist (video only for now)

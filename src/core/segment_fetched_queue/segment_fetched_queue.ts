@@ -14,43 +14,43 @@ export namespace SegmentFetchedQueue {
   export type Type = Ref.Ref<Queue.Queue<Queued>>;
 
   export const make = (): Effect.Effect<Type> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Queue.unbounded<Queued>();
       return yield* Ref.make(queue);
     });
 
   export const add = (self: Type, next: Queued): Effect.Effect<void> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Ref.get(self);
       yield* Queue.offer(queue, next);
     });
 
   export const addMany = (self: Type, next: Queued[]): Effect.Effect<void> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Ref.get(self);
       yield* Queue.offerAll(queue, next);
     });
 
   export const take = (self: Type): Effect.Effect<Queued> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Ref.get(self);
       return yield* Queue.take(queue);
     });
 
   export const takeAll = (self: Type): Effect.Effect<Queued[]> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Ref.get(self);
       return yield* Queue.takeAll(queue).pipe(Effect.map(Chunk.toArray));
     });
 
   export const size = (self: Type): Effect.Effect<number> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const queue = yield* Ref.get(self);
       return yield* queue.size;
     });
 
   export const clear = (self: Type): Effect.Effect<void> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const nextQueue = yield* Queue.unbounded<Queued>();
       const previousQueue = yield* Ref.modify(self, (queue) => [queue, nextQueue]);
       yield* Queue.shutdown(previousQueue);

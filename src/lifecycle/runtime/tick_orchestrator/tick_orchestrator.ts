@@ -8,6 +8,7 @@ import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 import { RepresentationChangePolicy } from "@/src/policy/representation_change_policy/representation_change_policy";
+import type { MediaSourceModule } from "@/src/core/media_source/media_source";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -22,6 +23,7 @@ export namespace TickOrchestrator {
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
     lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
+    mediaSource: MediaSourceModule.OpenedMediaSource.Type;
   };
   export const make = ({
     manifest,
@@ -35,6 +37,7 @@ export namespace TickOrchestrator {
     cancelCurrentSegmentFetches,
     restartSegmentFetchWorker,
     lastAppendedSegment,
+    mediaSource,
   }: Params) =>
     Effect.gen(function* () {
       if ((yield* SegmentFetchedQueue.size(segmentFetchedQueue)) > 0) {
@@ -66,6 +69,9 @@ export namespace TickOrchestrator {
         segmentFetchedQueue,
         currentPlaylist,
         lastAppendedSegment,
+        mediaSource,
+        manifest,
+        mediaElement,
       );
 
       yield* BufferManager.cleanupOldBuffer(buffer, mediaElement);

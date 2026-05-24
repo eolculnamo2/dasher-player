@@ -47,7 +47,7 @@ export namespace VideoTick {
         ? Math.max(firstSegment.presentationTime, mediaElement.currentTime)
         : range.end;
 
-      const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
+      const currentSegment = DashManifest.findCurrentSegment(manifest, playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(
           `Invariant violation: Unable to find current video segment! ${bufferEnd} on ${preferredPlaylist.height} for ${mimeType}`,

@@ -32,4 +32,7 @@ export namespace MediaElement {
 
     return null;
   };
+
+  export const getBufferEnd = (self: Type) =>
+    self.buffered.length > 0 ? self.buffered.end(self.buffered.length - 1) : null;
 }

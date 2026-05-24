@@ -58,7 +58,7 @@ export namespace AudioTick {
       //   ? audioBuffer.buffered.end(0)
       //   : Math.max(firstSegment.presentationTime, mediaElement.currentTime);
 
-      const currentSegment = DashManifest.findCurrentSegment(playlist, bufferEnd);
+      const currentSegment = DashManifest.findCurrentSegment(manifest, playlist, bufferEnd);
       if (!currentSegment) {
         throw new Error(
           `Invariant violation: Unable to find current audio segment! ${bufferEnd} for ${mimeType}`,

@@ -193,14 +193,17 @@ export namespace DashManifest {
     return result;
   };
 
-  export const findCurrentSegment = (playlist: Playlist, currentTime: number) =>
+  export const getEffectiveDuration = (self: Type) => self.duration - 0.05;
+
+  export const findCurrentSegment = (self: Type, playlist: Playlist, currentTime: number) =>
     playlist.segments.find((p) => {
       if (p.presentationTime == null) {
         Effect.logWarning(`presentation time is missing for segment ${p.number}`);
         return false;
       }
+      const boundedTime = Math.min(currentTime, getEffectiveDuration(self));
       return (
-        p.presentationTime <= currentTime && (p.duration ?? 0) + p.presentationTime >= currentTime
+        p.presentationTime <= boundedTime && (p.duration ?? 0) + p.presentationTime >= boundedTime
       );
     });
 

@@ -56,7 +56,7 @@ export namespace SegmentScheduler {
       lastAppendedSegment,
     }: TickParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const playlist = yield* Ref.get(currentPlaylist);
       const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
