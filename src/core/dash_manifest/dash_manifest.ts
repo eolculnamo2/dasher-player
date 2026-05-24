@@ -130,7 +130,7 @@ export namespace DashManifest {
     discontinuityStarts: Schema.mutable(Schema.Array(Schema.Number)),
   }) as Schema.Schema<Manifest>;
   export type Type = typeof Manifest.Type;
-  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> {}
+  export class MissingCodec extends Data.TaggedError("MediaSourceUnsupportedError")<{}> { }
 
   export const make = (
     raw: string,
@@ -178,7 +178,7 @@ export namespace DashManifest {
     for (let i = nextSegmentNumber; i < segments.length; i++) {
       const segment = segments.find((s) => s.number === i);
       if (!segment) {
-        console.log(`unable to find segment ${i}`);
+        console.warn(`unable to find segment ${i}`);
         continue;
       }
 
