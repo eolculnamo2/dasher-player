@@ -12,8 +12,8 @@ import { MediaSourceShutdownPolicy } from "@/src/policy/media_source_shutdown_po
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
-  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> { }
-  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> { }
+  export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
+  export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -36,7 +36,7 @@ export namespace BufferManager {
   };
   type CreateBufferParams = CreateVideoBufferParams | CreateAudioBufferParams;
   export const createBuffer = (self: Type, params: CreateBufferParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = self.buffers.get(params.mimeType);
       if (current) {
         return current;
@@ -73,7 +73,7 @@ export namespace BufferManager {
     self: Type,
     { mediaSource, manifest, currentPlaylist }: CreateBuffersParams,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const audioCodec = DashManifest.getAudioPlaylist(manifest)?.attributes.CODECS;
 
       // adding source buffer after segments start getting assigned breaks things so do it all at once
@@ -116,15 +116,15 @@ export namespace BufferManager {
 
   export type AddInitParams =
     | {
-      playlist: DashManifest.Playlist;
-      mimeType: Codec.MimeType.Type;
-    }
+        playlist: DashManifest.Playlist;
+        mimeType: Codec.MimeType.Type;
+      }
     | {
-      playlist: DashManifest.Playlist;
-      sourceBuffer: SourceBuffer;
-    };
+        playlist: DashManifest.Playlist;
+        sourceBuffer: SourceBuffer;
+      };
   export const addInit = (self: Type, params: AddInitParams) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const initUrl = params.playlist.segments[0]?.map.resolvedUri;
 
       if (!initUrl) {
@@ -154,9 +154,62 @@ export namespace BufferManager {
       .find(([key]) => Codec.MimeType.toString(key).startsWith("audio"))?.[1];
   };
 
-  // note: may not end up being the best thing to pass around raw source buffers
+  export const getPlayableBufferEnd = (self: Type): number | null => {
+    const sourceBuffers = Array.from(self.buffers.values());
+    if (sourceBuffers.length === 0) {
+      return null;
+    }
+    const ends: number[] = [];
+    for (const sourceBuffer of sourceBuffers) {
+      if (sourceBuffer.buffered.length === 0) {
+        return null;
+      }
+      ends.push(sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1));
+    }
+    // min because lowest playable is both audio+video
+    return Math.min(...ends);
+  };
+
+  export const getHighestBufferedEnd = (buffers: SourceBufferModule.Type[]): number | null => {
+    let highestEnd: number | null = null;
+
+    for (const buffer of buffers) {
+      for (let i = 0; i < buffer.buffered.length; i++) {
+        const end = buffer.buffered.end(i);
+        highestEnd = highestEnd == null ? end : Math.max(highestEnd, end);
+      }
+    }
+
+    return highestEnd;
+  };
+
+  export const removeBeyondDuration = (
+    buffers: SourceBufferModule.Type[],
+    finalDuration: number,
+    epsilon: number,
+  ) =>
+    Effect.gen(function* () {
+      for (const buffer of buffers) {
+        yield* SourceBufferModule.waitForOpenBuffer(buffer);
+
+        for (let i = buffer.buffered.length - 1; i >= 0; i--) {
+          const start = buffer.buffered.start(i);
+          const end = buffer.buffered.end(i);
+
+          if (end <= finalDuration + epsilon) {
+            continue;
+          }
+
+          yield* SourceBufferModule.removeBuffer(buffer, {
+            start: Math.max(start, finalDuration),
+            end,
+          });
+        }
+      }
+    });
+
   export const attachSegment = (sourceBuffer: SourceBufferModule.Type, segment: ArrayBuffer) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return yield* SourceBufferModule.attachSegment(sourceBuffer, segment);
     });
 
@@ -170,7 +223,6 @@ export namespace BufferManager {
       const start = ranges.start(i);
       const end = ranges.end(i);
 
-      // if (currentTime >= start && currentTime <= end) {
       if (currentTime >= start - EPSILON && currentTime <= end + EPSILON) {
         deltas.push(Math.max(0, end - currentTime));
       }
@@ -236,7 +288,7 @@ export namespace BufferManager {
   };
 
   export const cleanupOldBuffer = (self: Type, mediaElement: HTMLMediaElement) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const currentRange = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
       if (!currentRange) {
         if (mediaElement.buffered.length > 1) {
@@ -257,14 +309,14 @@ export namespace BufferManager {
     });
 
   export const clearAllBuffers = (self: Type) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       for (const [_, buffer] of self.buffers) {
         yield* SourceBufferModule.clearSourceBuffer(buffer);
       }
     });
 
   export const clearVideoBuffer = (self: Type) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const videoBuffer = findFirstVideoBuffer(self);
       if (!videoBuffer) {
         yield* Effect.logInfo("failed to clear video buffer - buffer not found");
@@ -274,7 +326,7 @@ export namespace BufferManager {
     });
 
   export const clearAudioBuffer = (self: Type) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const audioBuffer = findFirstAudioBuffer(self);
       if (!audioBuffer) {
         yield* Effect.logInfo("failed to clear audio buffer - buffer not found");
@@ -292,7 +344,7 @@ export namespace BufferManager {
     manifest: DashManifest.Type,
     mediaElement: HTMLMediaElement,
   ) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const mimeTypes = self.buffers.keys();
       const playlistValue = yield* Ref.get(playlist);
       const flushed = (yield* SegmentFetchedQueue.takeAll(segmentQueue))
@@ -317,6 +369,7 @@ export namespace BufferManager {
       const finalSegmentNumber = playlistValue.segments.at(-1)?.number;
       const appendedSegmentMap = new Map(lastSegmentMap);
 
+      let hasFinalSegment = false;
       for (const mimeType of mimeTypes) {
         const buffer = self.buffers.get(mimeType);
         if (!buffer) {
@@ -331,27 +384,27 @@ export namespace BufferManager {
           yield* attachSegment(buffer, f.data);
           appendedSegmentMap.set(mimeType, f.segment.number);
 
-          const hasReachedEnd =
-            playlistValue.endList &&
-            finalSegmentNumber != null &&
-            Array.from(self.buffers.keys()).every(
-              (key) => appendedSegmentMap.get(key) === finalSegmentNumber,
-            );
-
-          if (hasReachedEnd) {
-            yield* MediaSourceShutdownPolicy.endStream(
-              mediaSource,
-              self.buffers.values(),
-              MediaElement.getBufferEnd(mediaElement) ?? mediaElement.duration,
-            );
-          }
           lastUpdated = f;
+          if (finalSegmentNumber === f.segment.number) {
+            hasFinalSegment = true;
+          }
         }
         if (lastUpdated != null) {
           yield* Ref.update(lastAppendedSegment, (lastMap) =>
             lastMap.set(mimeType, lastUpdated.segment.number),
           );
         }
+      }
+
+      const hasReachedEnd =
+        playlistValue.endList &&
+        hasFinalSegment &&
+        Array.from(self.buffers.keys()).every(
+          (key) => appendedSegmentMap.get(key) === finalSegmentNumber,
+        );
+      if (hasReachedEnd) {
+        console.log("has reached end");
+        yield* MediaSourceShutdownPolicy.endStream(mediaSource, self, mediaElement);
       }
     });
 

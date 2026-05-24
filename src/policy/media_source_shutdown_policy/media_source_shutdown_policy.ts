@@ -1,15 +1,23 @@
 import { Effect } from "effect";
 import { MediaSourceModule } from "@/src/core/media_source/media_source";
 import { SourceBufferModule } from "@/src/core/source_buffer/source_buffer";
+import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 
 export namespace MediaSourceShutdownPolicy {
+  // this is aggressive for now. Would like to lower in the future
+  const DURATION_EPSILON_SECONDS = .5;
+
   export const endStream = (
     mediaSource: MediaSourceModule.OpenedMediaSource.Type,
-    buffers: Iterable<SourceBufferModule.Type>,
-    finalDuration: number,
+    buffers: BufferManager.Type,
   ) =>
     Effect.gen(function*() {
-      const sourceBuffers = Array.from(buffers);
+      const finalDuration = BufferManager.getPlayableBufferEnd(buffers);
+      if (!finalDuration) {
+        yield* Effect.logWarning('failed to end stream due to null buffer end');
+        return;
+      }
+      const sourceBuffers = Array.from(buffers.buffers.values());
 
       if (mediaSource.readyState === "ended") {
         return;
@@ -35,20 +43,26 @@ export namespace MediaSourceShutdownPolicy {
         return;
       }
 
-      if (mediaSource.duration > finalDuration) {
-        yield* Effect.forEach(
-          sourceBuffers,
-          (buffer) =>
-            SourceBufferModule.removeBuffer(buffer, {
-              start: finalDuration,
-              end: mediaSource.duration,
-            }),
-          { discard: true },
-        );
-      }
-
+      yield* Effect.forEach(sourceBuffers, SourceBufferModule.waitForOpenBuffer, { discard: true });
+      yield* BufferManager.removeBeyondDuration(
+        sourceBuffers,
+        finalDuration,
+        DURATION_EPSILON_SECONDS,
+      );
       yield* Effect.forEach(sourceBuffers, SourceBufferModule.waitForOpenBuffer, { discard: true });
 
+      const highestBufferedEnd = BufferManager.getHighestBufferedEnd(sourceBuffers);
+      if (
+        highestBufferedEnd != null &&
+        highestBufferedEnd > finalDuration + DURATION_EPSILON_SECONDS
+      ) {
+        yield* Effect.logWarning(
+          `cannot lower media source duration to ${finalDuration}; buffered coded frames still end at ${highestBufferedEnd}`,
+        );
+        return;
+      }
+
+      yield* Effect.logInfo(`Ending stream. Setting source dur to ${finalDuration}`);
       mediaSource.duration = finalDuration;
       mediaSource.endOfStream();
     });

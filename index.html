@@ -4,22 +4,154 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dasher-player</title>
+    <title>Dasher Player</title>
+    <style>
+      :root {
+        color: #182033;
+        background: #f5f7fb;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: clamp(1rem, 3vw, 2.5rem);
+      }
+
+      main {
+        width: min(100%, 1500px);
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 0.4rem;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      p {
+        max-width: 58rem;
+        margin: 0 0 1.5rem;
+        color: #5d6678;
+        font-size: clamp(1rem, 2vw, 1.125rem);
+      }
+
+      #manifest-form {
+        display: flex;
+        gap: 0.75rem;
+        align-items: end;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid #dfe5ef;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 16px 40px rgba(24, 32, 51, 0.08);
+      }
+
+      .input-group {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.4rem;
+        color: #384154;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      input {
+        width: 100%;
+        min-height: 3rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid #cfd7e6;
+        border-radius: 12px;
+        color: #182033;
+        background: #ffffff;
+        font: inherit;
+        outline: none;
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      button {
+        min-height: 3rem;
+        padding: 0.8rem 1.25rem;
+        border: 0;
+        border-radius: 12px;
+        color: #ffffff;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+      }
+
+      button:hover {
+        background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      }
+
+      video {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        border-radius: 18px;
+        background: #05070d;
+        box-shadow: 0 24px 64px rgba(24, 32, 51, 0.18);
+      }
+
+      @media (max-width: 680px) {
+        #manifest-form {
+          display: block;
+        }
+
+        button {
+          width: 100%;
+          margin-top: 0.75rem;
+        }
+      }
+    </style>
   </head>
   <body>
-    <form id="manifest-form">
-      <label for="manifest-url">Dash Manifest URL</label>
-      <input
-        id="manifest-url"
-        name="manifestUrl"
-        type="url"
-        size="120"
-        placeholder="https://example.com/Manifest.mpd"
-        required
-      />
-      <button type="submit">Load</button>
-    </form>
-    <video id="dasher-test-vid" controls width="1500px"></video>
+    <main>
+      <h1>Dasher Player</h1>
+      <p>Paste a DASH manifest URL below, then load it to test playback in the browser.</p>
+      <form id="manifest-form">
+        <div class="input-group">
+          <label for="manifest-url">DASH Manifest URL</label>
+          <input
+            id="manifest-url"
+            name="manifestUrl"
+            type="url"
+            placeholder="https://example.com/Manifest.mpd"
+            required
+          />
+        </div>
+        <button type="submit">Load Stream</button>
+      </form>
+      <video id="dasher-test-vid" controls></video>
+    </main>
     <script type="module">
       // import * as Dasher from "./build/main.js.br";
       import * as Dasher from "./build/main.js";
