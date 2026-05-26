@@ -9,6 +9,7 @@ import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 import { RepresentationChangePolicy } from "@/src/policy/representation_change_policy/representation_change_policy";
 import type { MediaSourceModule } from "@/src/core/media_source/media_source";
+import { MediaSourceShutdownPolicy } from "@/src/policy/media_source_shutdown_policy/media_source_shutdown_policy";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -23,6 +24,7 @@ export namespace TickOrchestrator {
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
     lastAppendedSegment: Ref.Ref<SegmentOrder.Type>;
+    bufferedEndOfStream: Ref.Ref<boolean>;
     mediaSource: MediaSourceModule.OpenedMediaSource.Type;
   };
   export const make = ({
@@ -37,6 +39,7 @@ export namespace TickOrchestrator {
     cancelCurrentSegmentFetches,
     restartSegmentFetchWorker,
     lastAppendedSegment,
+    bufferedEndOfStream,
     mediaSource,
   }: Params) =>
     Effect.gen(function* () {
@@ -64,15 +67,21 @@ export namespace TickOrchestrator {
         }
       }
 
-      yield* BufferManager.flushSegmentQueue(
+      const { hasReachedEnd } = yield* BufferManager.flushSegmentQueue(
         buffer,
         segmentFetchedQueue,
         currentPlaylist,
         lastAppendedSegment,
-        mediaSource,
-        manifest,
-        mediaElement,
       );
+
+      // leaving this set in orchestrator to keep state updates more visible for now
+      if (hasReachedEnd) {
+        yield* Ref.set(bufferedEndOfStream, true);
+      }
+
+      if (yield* Ref.get(bufferedEndOfStream)) {
+        yield* MediaSourceShutdownPolicy.endStream(mediaSource, buffer, mediaElement);
+      }
 
       yield* BufferManager.cleanupOldBuffer(buffer, mediaElement);
 

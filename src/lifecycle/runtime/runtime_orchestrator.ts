@@ -34,6 +34,7 @@ export namespace RuntimeOrchestrator {
       const lastAppendedSegment = yield* SegmentOrder.make();
       const currentPlaylist = yield* Ref.make(recommendedPlaylist);
       const hysteresis = yield* Ref.make(Hysteresis.make());
+      const bufferedEndOfStream = yield* Ref.make(false);
       const segmentFetchedQueue = yield* SegmentFetchedQueue.make();
       const segmentPendingQueue = yield* SegmentPendingQueues.make();
       const scheduler = SegmentScheduler.make();
@@ -83,6 +84,7 @@ export namespace RuntimeOrchestrator {
           cancelCurrentSegmentFetches,
           restartSegmentFetchWorker,
           lastAppendedSegment,
+          bufferedEndOfStream,
           mediaSource,
         });
         yield* Effect.sleep(RUNTIME_INTERVAL);

@@ -340,9 +340,6 @@ export namespace BufferManager {
     segmentQueue: SegmentFetchedQueue.Type,
     playlist: Ref.Ref<DashManifest.Playlist>,
     lastAppendedSegment: Ref.Ref<Map<Codec.MimeType.Type, number>>,
-    mediaSource: MediaSourceModule.OpenedMediaSource.Type,
-    manifest: DashManifest.Type,
-    mediaElement: HTMLMediaElement,
   ) =>
     Effect.gen(function* () {
       const mimeTypes = self.buffers.keys();
@@ -363,7 +360,9 @@ export namespace BufferManager {
 
       if (!isValid) {
         yield* SegmentFetchedQueue.addMany(segmentQueue, appendable);
-        return;
+        return {
+          hasReachedEnd: false,
+        };
       }
 
       const finalSegmentNumber = playlistValue.segments.at(-1)?.number;
@@ -402,10 +401,10 @@ export namespace BufferManager {
         Array.from(self.buffers.keys()).every(
           (key) => appendedSegmentMap.get(key) === finalSegmentNumber,
         );
-      if (hasReachedEnd) {
-        console.log("has reached end");
-        yield* MediaSourceShutdownPolicy.endStream(mediaSource, self, mediaElement);
-      }
+
+      return {
+        hasReachedEnd,
+      };
     });
 
   export const make = (): Type => {
