@@ -62,6 +62,15 @@ const uninstallMediaSource = () => {
 const makeMediaElement = (): HTMLMediaElement =>
   new FakeMediaElement() as unknown as HTMLMediaElement;
 
+const latestMediaSource = () => {
+  const mediaSource = FakeMediaSource.instances.at(-1);
+  expect(mediaSource).toBeDefined();
+  return mediaSource as unknown as MediaSource;
+};
+
+const latestOpenedMediaSource = () =>
+  latestMediaSource() as MediaSourceModule.OpenedMediaSource.Type;
+
 const runScopedEither = <A, E>(effect: Effect.Effect<A, E, never>) =>
   Effect.runPromise(Effect.either(effect));
 
@@ -104,7 +113,7 @@ beforeEach(() => {
 
     const url = `blob:test-${createdUrls.length}`;
     createdUrls.push(url);
-    expect(object).toBe(FakeMediaSource.instances.at(-1));
+    expect(object).toBe(latestMediaSource());
     return url;
   }) as typeof URL.createObjectURL;
 
@@ -128,7 +137,7 @@ describe("MediaSourceModule.make", () => {
         Effect.gen(function* () {
           const result = yield* MediaSourceModule.make(mediaElement);
 
-          expect(result.mediaSource).toBe(FakeMediaSource.instances[0]);
+          expect(result.mediaSource).toBe(latestOpenedMediaSource());
           expect(result.mediaElement).toBe(mediaElement);
           expect(mediaElement.src).toBe("blob:test-0");
 
@@ -142,7 +151,7 @@ describe("MediaSourceModule.make", () => {
 
     const result = await resultPromise;
 
-    expect(result.mediaSource).toBe(FakeMediaSource.instances[0]);
+    expect(result.mediaSource).toBe(latestOpenedMediaSource());
     expect(createdUrls).toEqual(["blob:test-0"]);
     expect(revokedUrls).toEqual(["blob:test-0"]);
   });
@@ -260,7 +269,7 @@ describe("MediaSourceModule.make", () => {
     const result = await runMakeScopedEither(mediaElement, 1);
 
     expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
+    if (Either.isLeft(result) && result.left._tag === "MediaSourceOpenTimeoutError") {
       expect(result.left).toBeInstanceOf(MediaSourceModule.MediaSourceOpenTimeoutError);
       expect(result.left.timeoutMs).toBe(1);
     }
