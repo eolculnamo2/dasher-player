@@ -6,6 +6,7 @@ import { BufferManager } from "../buffer_manager/buffer_manager";
 import { SegmentScheduler } from "../segment_scheduler/segment_scheduler";
 import type { DashManifest } from "../dash_manifest/dash_manifest";
 import { BufferZone } from "../buffer_zone/buffer_zone";
+import { TimeRange } from "../time_range/time_range";
 
 // opportunities:
 // - differentiate between codec to see how much of each needs caught up (could prioritize by codec, and may queue per codec)i
@@ -125,7 +126,10 @@ export namespace SegmentFetchWorker {
               bufferZone: BufferZone.get({ bufferManager, manifest, mediaElement }),
             }).pipe(
               Effect.flatMap((data) => {
-                scheduler.fetchMap.set(pending.segment.uri, { kind: "complete" });
+                scheduler.fetchMap.set(pending.segment.uri, {
+                  kind: "complete",
+                  range: TimeRange.fromSegment(pending.segment),
+                });
                 return SegmentFetchedQueue.add(segmentFetchedQueue, {
                   data,
                   playlistId: pending.playlistId,

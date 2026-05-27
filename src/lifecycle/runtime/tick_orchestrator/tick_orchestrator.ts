@@ -10,6 +10,7 @@ import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 import { RepresentationChangePolicy } from "@/src/policy/representation_change_policy/representation_change_policy";
 import type { MediaSourceModule } from "@/src/core/media_source/media_source";
 import { MediaSourceShutdownPolicy } from "@/src/policy/media_source_shutdown_policy/media_source_shutdown_policy";
+import type { TimeRange } from "@/src/core/time_range/time_range";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -83,7 +84,26 @@ export namespace TickOrchestrator {
         yield* MediaSourceShutdownPolicy.endStream(mediaSource, buffer, mediaElement);
       }
 
-      yield* BufferManager.cleanupOldBuffer(buffer, mediaElement);
+      const bufferCleanupRanges = yield* BufferManager.cleanupOldBuffer(buffer, mediaElement).pipe(
+        Effect.catchTag("MultipleBufferError", () =>
+          Ref.get(currentPlaylist).pipe(
+            Effect.flatMap((nextPlaylist) =>
+              RepresentationChangePolicy.handleChange({
+                bufferManager: buffer,
+                currentPlaylist,
+                scheduler,
+                nextPlaylist,
+                segmentFetchedQueue,
+                segmentPendingQueue,
+                lastAppendedSegment,
+                restartSegmentFetchWorker,
+                cancelCurrentSegmentFetches,
+              }),
+            ),
+            Effect.map((_): TimeRange.Type[] => []),
+          ),
+        ),
+      );
 
       const bufferBehindMap = BufferManager.bufferBehindTargetByCodec(
         buffer,
@@ -94,6 +114,7 @@ export namespace TickOrchestrator {
         buffer,
         manifest,
         currentPlaylist,
+        clearedBufferRanges: bufferCleanupRanges,
         segmentPendingQueue,
         requested: bufferBehindMap,
         mediaElement,

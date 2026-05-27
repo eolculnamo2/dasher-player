@@ -12,21 +12,15 @@ import { AudioTick } from "./audio-tick/audio-tick";
 import { SegmentPendingQueues } from "../segment_pending_queues/segment_pending_queues";
 import type { BufferManager } from "../buffer_manager/buffer_manager";
 import { SegmentOrder } from "../segment_order/segment_order";
+import { TimeRange } from "../time_range/time_range";
+import { FetchMap } from "./fetch-map/fetch-map";
 
 export namespace SegmentScheduler {
-  namespace SegmentStatus {
-    // successful loads get pushed straight to queue and removed from map
-    export type Type =
-      | { kind: "complete" }
-      | { kind: "loading" }
-      | { kind: "error"; e: SegmentFetcher.SegmentError };
-  }
-
   export type Type = {
-    fetchMap: Map<SegmentUrl.Type, SegmentStatus.Type>;
+    fetchMap: FetchMap.Type;
   };
   export const make = () => ({
-    fetchMap: new Map<SegmentUrl.Type, SegmentStatus.Type>(),
+    fetchMap: FetchMap.make(),
   });
 
   export const clear = (self: Type) =>
@@ -37,6 +31,7 @@ export namespace SegmentScheduler {
   export type TickParams = {
     buffer: BufferManager.Type;
     manifest: DashManifest.Type;
+    clearedBufferRanges: Array<TimeRange.Type>;
     segmentPendingQueue: SegmentPendingQueues.Type;
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     requested: Map<Codec.MimeType.Type, Duration.Duration>;
@@ -50,6 +45,7 @@ export namespace SegmentScheduler {
       buffer,
       manifest,
       segmentPendingQueue,
+      clearedBufferRanges,
       currentPlaylist,
       requested,
       mediaElement,
@@ -57,6 +53,10 @@ export namespace SegmentScheduler {
     }: TickParams,
   ) =>
     Effect.gen(function* () {
+      for (const clearedBufferRange of clearedBufferRanges) {
+        FetchMap.clearFromRange(self.fetchMap, clearedBufferRange);
+      }
+
       const playlist = yield* Ref.get(currentPlaylist);
       const playlistId = playlist.attributes.NAME;
       const preferredPlaylist = {
@@ -104,7 +104,7 @@ export namespace SegmentScheduler {
           if (!kind) {
             continue;
           }
-          self.fetchMap.set(segment.uri, { kind: "loading" });
+          self.fetchMap.set(segment.uri, { kind: "loading", range: TimeRange.fromSegment(segment) });
           yield* SegmentPendingQueues.add(segmentPendingQueue, kind, {
             mimeType,
             segment,

@@ -7,13 +7,14 @@ import { DashManifest } from "../dash_manifest/dash_manifest";
 import { SegmentFetchedQueue } from "../segment_fetched_queue/segment_fetched_queue";
 import { SegmentOrder } from "../segment_order/segment_order";
 import { MediaElement } from "../media_element/media_element";
-import { MediaSourceShutdownPolicy } from "@/src/policy/media_source_shutdown_policy/media_source_shutdown_policy";
+import { TimeRange } from "../time_range/time_range";
 
 export namespace BufferManager {
   const DEFAULT_BUFFERING_GOAL = Duration.seconds(60);
 
   export class MissingInitSegmentUrl extends Data.TaggedError("MissingInitSegmentUrl")<{}> {}
   export class MissingByMimeType extends Data.TaggedError("MissingByMimeType")<{}> {}
+  export class MultipleBufferError extends Data.TaggedError("MultipleBufferError")<{}> {}
 
   export type Type = {
     buffers: Map<Codec.MimeType.Type, SourceBuffer>;
@@ -291,21 +292,26 @@ export namespace BufferManager {
     Effect.gen(function* () {
       const currentRange = MediaElement.findBufferedRange(mediaElement, mediaElement.currentTime);
       if (!currentRange) {
+        // this isn't actually supposed to happen; when it does, get rid of the buffer and start again.
+        // Going to need something more robust tho.
         if (mediaElement.buffered.length > 1) {
           yield* Effect.logWarning(
             `clearing all buffers; current time ${mediaElement.currentTime} is not in any buffered range`,
           );
-          yield* clearAllBuffers(self);
+          yield* Effect.fail(new MultipleBufferError());
         }
-        return;
+        return [];
       }
 
+      const removedRanges: Array<TimeRange.Type> = [];
       for (const sourceBuffer of self.buffers.values()) {
-        yield* SourceBufferModule.cleanupOldBuffer(sourceBuffer, {
-          currentRange,
+        const sourceBufferRemovedRanges = yield* SourceBufferModule.cleanupOldBuffer(sourceBuffer, {
           currentTime: mediaElement.currentTime,
         });
+        removedRanges.push(...sourceBufferRemovedRanges);
       }
+
+      return removedRanges;
     });
 
   export const clearAllBuffers = (self: Type) =>

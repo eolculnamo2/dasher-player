@@ -26,7 +26,7 @@ export namespace SegmentOrder {
     self: Ref.Ref<Type>,
     { candidates }: ValidateOrderedCandidatesParams,
   ) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const mimeTypes: Codec.MimeType.Type[] = [];
       for (const c of candidates) {
         if (mimeTypes.includes(c.mimeType)) {
@@ -35,10 +35,16 @@ export namespace SegmentOrder {
         mimeTypes.push(c.mimeType);
       }
 
-      const orderedSegmentNumbers = mimeTypes.map((m) => ({
-        mimeType: m,
-        segmentNumber: candidates.find((c) => c.mimeType === m)?.segment.number,
-      }));
+      const orderedSegmentNumbers = mimeTypes
+        .map((m) => ({
+          mimeType: m,
+          segmentNumber: candidates.find((c) => c.mimeType === m)?.segment.number,
+        }))
+        .toSorted((a, b) =>
+          a.segmentNumber != null && b.segmentNumber != null && a.segmentNumber > b.segmentNumber
+            ? 1
+            : -1,
+        );
 
       for (const n of orderedSegmentNumbers) {
         const passes = yield* Ref.get(self).pipe(

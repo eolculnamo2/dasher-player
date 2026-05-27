@@ -3,6 +3,7 @@ import { Duration, Effect, Either, Fiber, Logger, TestClock, TestContext } from 
 import { Codec } from "@/src/core/codec/codec";
 import { MediaSourceModule } from "@/src/core/media_source/media_source";
 import { SourceBufferModule } from "./source_buffer";
+import { TimeRange } from "../time_range/time_range";
 
 type LogEntry = {
   level: string;
@@ -390,7 +391,7 @@ describe("SourceBufferModule.removeBuffer", () => {
 });
 
 describe("SourceBufferModule.cleanupOldBuffer", () => {
-  test("removes ranges outside the current range and trims retained overlap", async () => {
+  test("removes only ranges older than the retain-behind window", async () => {
     const sourceBuffer = new FakeSourceBuffer();
     sourceBuffer.buffered = makeTimeRanges([
       [0, 4],
@@ -400,9 +401,9 @@ describe("SourceBufferModule.cleanupOldBuffer", () => {
     ]);
     sourceBuffer.autoDispatchUpdateEndOnRemove = true;
 
-    await Effect.runPromise(
+    const removedRanges = await Effect.runPromise(
       SourceBufferModule.cleanupOldBuffer(sourceBuffer.asSourceBuffer(), {
-        currentRange: { start: 5, end: 25 },
+        currentRange: TimeRange.fromRaw({ start: 5, end: 25 }),
         currentTime: 20,
       }),
     );
@@ -410,8 +411,27 @@ describe("SourceBufferModule.cleanupOldBuffer", () => {
     expect(sourceBuffer.removedRanges).toEqual([
       { start: 0, end: 4 },
       { start: 5, end: 10 },
-      { start: 40, end: 50 },
     ]);
+    expect(removedRanges).toEqual(sourceBuffer.removedRanges.map(TimeRange.fromRaw));
+  });
+
+  test("preserves future buffered ranges", async () => {
+    const sourceBuffer = new FakeSourceBuffer();
+    sourceBuffer.buffered = makeTimeRanges([
+      [12, 30],
+      [40, 50],
+    ]);
+    sourceBuffer.autoDispatchUpdateEndOnRemove = true;
+
+    const removedRanges = await Effect.runPromise(
+      SourceBufferModule.cleanupOldBuffer(sourceBuffer.asSourceBuffer(), {
+        currentRange: TimeRange.fromRaw({ start: 12, end: 30 }),
+        currentTime: 20,
+      }),
+    );
+
+    expect(sourceBuffer.removedRanges).toEqual([]);
+    expect(removedRanges).toEqual([]);
   });
 
   test("respects a custom retain-behind window", async () => {
@@ -419,15 +439,16 @@ describe("SourceBufferModule.cleanupOldBuffer", () => {
     sourceBuffer.buffered = makeTimeRanges([[0, 18]]);
     sourceBuffer.autoDispatchUpdateEndOnRemove = true;
 
-    await Effect.runPromise(
+    const removedRanges = await Effect.runPromise(
       SourceBufferModule.cleanupOldBuffer(sourceBuffer.asSourceBuffer(), {
-        currentRange: { start: 0, end: 30 },
+        currentRange: TimeRange.fromRaw({ start: 0, end: 30 }),
         currentTime: 20,
         retainBehindSeconds: 5,
       }),
     );
 
     expect(sourceBuffer.removedRanges).toEqual([{ start: 0, end: 15 }]);
+    expect(removedRanges).toEqual(sourceBuffer.removedRanges.map(TimeRange.fromRaw));
   });
 });
 

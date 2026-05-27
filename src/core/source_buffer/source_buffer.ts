@@ -2,6 +2,7 @@ import { Data, Duration, Effect } from "effect";
 import { MediaSourceModule } from "../media_source/media_source";
 import { Codec } from "../codec/codec";
 import { logIfSlow } from "@/src/utils/log_if_slow/log_if_slow";
+import { TimeRange } from "../time_range/time_range";
 
 export namespace SourceBufferModule {
   export type Make = (params: {
@@ -10,10 +11,10 @@ export namespace SourceBufferModule {
   }) => Effect.Effect<SourceBuffer>;
   export class SourceBufferUpdateError extends Data.TaggedError("SourceBufferUpdateError")<{
     cause: unknown;
-  }> {}
+  }> { }
 
-  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> {}
-  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> {}
+  export class SourceBufferAbortError extends Data.TaggedError("SourceBufferAbortError")<{}> { }
+  export class SourceBufferRemoveError extends Data.TaggedError("SourceBufferRemoveError")<{}> { }
 
   export type Type = SourceBuffer;
   export const make: Make = ({ mediaSource, mimeType }) => {
@@ -27,7 +28,7 @@ export namespace SourceBufferModule {
   // this is happy path only right now until we get a working video poc
   export const attachSegment = (self: Type, segment: ArrayBuffer) =>
     logIfSlow(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         if (self.updating) {
           yield* waitForUpdateEnd(self);
         }
@@ -84,7 +85,7 @@ export namespace SourceBufferModule {
   };
   export const removeBuffer = (self: SourceBuffer, { start, end }: RemoveBufferParams) =>
     logIfSlow(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         if (end <= start) {
           return;
         }
@@ -127,43 +128,41 @@ export namespace SourceBufferModule {
       Duration.seconds(3),
     );
 
-  type BufferedRange = {
-    start: number;
-    end: number;
-  };
-
   type CleanupOldBufferParams = {
-    currentRange: BufferedRange;
     currentTime: number;
     retainBehindSeconds?: number;
   };
   export const cleanupOldBuffer = (
     self: SourceBuffer,
-    { currentRange, currentTime, retainBehindSeconds = 8 }: CleanupOldBufferParams,
+    { currentTime, retainBehindSeconds = 8 }: CleanupOldBufferParams,
   ): Effect.Effect<
-    void,
+    Array<TimeRange.Type>,
     SourceBufferRemoveError | SourceBufferUpdateError | SourceBufferAbortError
   > =>
     logIfSlow(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const ranges = Array.from({ length: self.buffered.length }, (_, index) => ({
           start: self.buffered.start(index),
           end: self.buffered.end(index),
         }));
-        const retainFrom = Math.max(currentRange.start, currentTime - retainBehindSeconds);
+        const removedRanges: Array<TimeRange.Type> = [];
+        const retainFrom = currentTime - retainBehindSeconds;
 
         for (const range of ranges) {
-          if (range.end <= currentRange.start || range.start >= currentRange.end) {
+          if (range.end <= retainFrom) {
             yield* removeBuffer(self, range);
+            removedRanges.push(TimeRange.fromRaw(range));
             continue;
           }
 
-          const trimEnd = Math.min(range.end, retainFrom);
-          const trimStart = Math.max(range.start, currentRange.start);
-          if (trimEnd > trimStart) {
-            yield* removeBuffer(self, { start: trimStart, end: trimEnd });
+          if (range.start < retainFrom) {
+            const removedRange = { start: range.start, end: Math.min(range.end, retainFrom) };
+            yield* removeBuffer(self, removedRange);
+            removedRanges.push(TimeRange.fromRaw(removedRange));
           }
         }
+
+        return removedRanges;
       }),
       "cleaning up old source buffer ranges is taking longer than expected",
       Duration.seconds(3),
@@ -176,7 +175,7 @@ export namespace SourceBufferModule {
     SourceBufferRemoveError | SourceBufferUpdateError | SourceBufferAbortError
   > =>
     logIfSlow(
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         if (self.buffered.length === 0) {
           return;
         }
