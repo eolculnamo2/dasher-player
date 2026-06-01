@@ -104,7 +104,10 @@ export namespace SegmentScheduler {
           if (!kind) {
             continue;
           }
-          self.fetchMap.set(segment.uri, { kind: "loading", range: TimeRange.fromSegment(segment) });
+          self.fetchMap.set(segment.uri, {
+            kind: "loading",
+            range: TimeRange.fromSegment(segment),
+          });
           yield* SegmentPendingQueues.add(segmentPendingQueue, kind, {
             mimeType,
             segment,

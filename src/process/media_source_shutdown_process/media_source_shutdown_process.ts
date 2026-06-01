@@ -4,7 +4,7 @@ import { SourceBufferModule } from "@/src/core/source_buffer/source_buffer";
 import { BufferManager } from "@/src/core/buffer_manager/buffer_manager";
 import type { MediaElement } from "@/src/core/media_element/media_element";
 
-export namespace MediaSourceShutdownPolicy {
+export namespace MediaSourceShutdownProcess {
   // this is aggressive for now. Would like to lower in the future
   const DURATION_EPSILON_SECONDS = 0.5;
 

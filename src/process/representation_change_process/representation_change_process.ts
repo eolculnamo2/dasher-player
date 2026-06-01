@@ -10,8 +10,9 @@ import { SegmentPendingQueues } from "@/src/core/segment_pending_queues/segment_
 import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
 import { SegmentScheduler } from "@/src/core/segment_scheduler/segment_scheduler";
 import { Effect, Ref } from "effect";
+import { ResetBufferProcess } from "../reset_buffer_process/reset_buffer_process";
 
-export namespace RepresentationChangePolicy {
+export namespace RepresentationChangeProcess {
   export type ChangeParams = {
     currentPlaylist: Ref.Ref<DashManifest.Playlist>;
     nextPlaylist: DashManifest.Playlist;
@@ -23,44 +24,10 @@ export namespace RepresentationChangePolicy {
     cancelCurrentSegmentFetches: Effect.Effect<void>;
     restartSegmentFetchWorker: Effect.Effect<void>;
   };
-  export const handleChange = ({
-    bufferManager,
-    currentPlaylist,
-    scheduler,
-    nextPlaylist,
-    segmentFetchedQueue,
-    segmentPendingQueue,
-    lastAppendedSegment,
-    restartSegmentFetchWorker,
-    cancelCurrentSegmentFetches,
-  }: ChangeParams) =>
+  // only leaving this as a thin wrapper around ResetBuffer because I anticipate to add here later
+  export const handleChange = (params: ChangeParams) =>
     Effect.gen(function* () {
       yield* Effect.logInfo("distinct representation; clearing previous playlist scheduling state");
-      const videoBuffer = BufferManager.findFirstVideoBuffer(bufferManager);
-      if (!videoBuffer) {
-        return yield* Effect.logError(
-          "Invariant violation: Unable to find video buffer for ABR switch",
-        );
-      }
-      yield* Effect.all(
-        [
-          cancelCurrentSegmentFetches,
-          SegmentFetchedQueue.clear(segmentFetchedQueue),
-          SegmentPendingQueues.clear(segmentPendingQueue),
-          SegmentScheduler.clear(scheduler),
-          Ref.set(lastAppendedSegment, new Map()),
-          Ref.update(currentPlaylist, () => nextPlaylist),
-          BufferManager.clearVideoBuffer(bufferManager),
-          BufferManager.clearAudioBuffer(bufferManager),
-          BufferManager.addInit(bufferManager, {
-            playlist: nextPlaylist,
-            sourceBuffer: videoBuffer,
-          }),
-          restartSegmentFetchWorker,
-        ],
-        {
-          concurrency: 1,
-        },
-      );
+      yield* ResetBufferProcess.reset(params);
     });
 }

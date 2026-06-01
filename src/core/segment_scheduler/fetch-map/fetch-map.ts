@@ -11,7 +11,9 @@ export namespace FetchMap {
     export type Type = (
       | { kind: "complete" }
       | { kind: "loading" }
-      | { kind: "error"; e: SegmentFetcher.SegmentError }) & Base;
+      | { kind: "error"; e: SegmentFetcher.SegmentError }
+    ) &
+      Base;
   }
 
   export type Type = Map<SegmentUrl.Type, SegmentStatus.Type>;

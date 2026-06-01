@@ -4,7 +4,7 @@ import { Data, Effect } from "effect";
 import * as ParseResult from "effect/ParseResult";
 import * as Schema from "effect/Schema";
 import { Codec } from "../codec/codec";
-import { RecommendedBitratePolicy } from "@/src/policy/recommended_bitrate_policy/recommended_bitrate_policy";
+import { RecommendedBitrateProcess } from "@/src/process/recommended_bitrate_process/recommended_bitrate_process";
 import type { ManifestUrl } from "../manifest_url/manifest_url";
 
 export namespace DashManifest {
@@ -165,7 +165,8 @@ export namespace DashManifest {
   export const getRecommendedVideoPlaylist = (
     self: Type,
     mediaElement: HTMLMediaElement,
-  ): Playlist => RecommendedBitratePolicy.chooseStartupRepresentation(self.playlists, mediaElement);
+  ): Playlist =>
+    RecommendedBitrateProcess.chooseStartupRepresentation(self.playlists, mediaElement);
 
   export const getSegmentsToFetch = (
     segments: DashSegment[],

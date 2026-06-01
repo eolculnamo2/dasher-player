@@ -61,19 +61,28 @@ describe("TimeRange.fromSegment", () => {
 describe("TimeRange.overlaps", () => {
   test("returns true for overlapping ranges", () => {
     expect(
-      TimeRange.overlaps(TimeRange.fromRaw({ start: 2, end: 6 }), TimeRange.fromRaw({ start: 4, end: 8 })),
+      TimeRange.overlaps(
+        TimeRange.fromRaw({ start: 2, end: 6 }),
+        TimeRange.fromRaw({ start: 4, end: 8 }),
+      ),
     ).toBe(true);
   });
 
   test("returns false for separated ranges", () => {
     expect(
-      TimeRange.overlaps(TimeRange.fromRaw({ start: 2, end: 4 }), TimeRange.fromRaw({ start: 5, end: 8 })),
+      TimeRange.overlaps(
+        TimeRange.fromRaw({ start: 2, end: 4 }),
+        TimeRange.fromRaw({ start: 5, end: 8 }),
+      ),
     ).toBe(false);
   });
 
   test("uses epsilon for close boundaries", () => {
     expect(
-      TimeRange.overlaps(TimeRange.fromRaw({ start: 2, end: 4 }), TimeRange.fromRaw({ start: 4.025, end: 8 })),
+      TimeRange.overlaps(
+        TimeRange.fromRaw({ start: 2, end: 4 }),
+        TimeRange.fromRaw({ start: 4.025, end: 8 }),
+      ),
     ).toBe(true);
   });
 });

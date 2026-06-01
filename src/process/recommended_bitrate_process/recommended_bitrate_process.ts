@@ -1,6 +1,6 @@
 import type { DashManifest } from "@/src/core/dash_manifest/dash_manifest";
 
-export namespace RecommendedBitratePolicy {
+export namespace RecommendedBitrateProcess {
   const getStartupBitrate = (connection?: NetworkInformation): number => {
     const downlink = connection?.downlink ?? 1.5;
     const effectiveType = connection?.effectiveType;

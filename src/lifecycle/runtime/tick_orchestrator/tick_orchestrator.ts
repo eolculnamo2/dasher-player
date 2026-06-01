@@ -7,10 +7,11 @@ import { Effect, Ref } from "effect";
 import { BufferBasedAbr } from "@/src/abr/buffer_based/buffer_based_abr";
 import type { Hysteresis } from "@/src/abr/hysteresis/hysteresis";
 import type { SegmentOrder } from "@/src/core/segment_order/segment_order";
-import { RepresentationChangePolicy } from "@/src/policy/representation_change_policy/representation_change_policy";
+import { RepresentationChangeProcess } from "@/src/process/representation_change_process/representation_change_process";
 import type { MediaSourceModule } from "@/src/core/media_source/media_source";
-import { MediaSourceShutdownPolicy } from "@/src/policy/media_source_shutdown_policy/media_source_shutdown_policy";
+import { MediaSourceShutdownProcess } from "@/src/process/media_source_shutdown_process/media_source_shutdown_process";
 import type { TimeRange } from "@/src/core/time_range/time_range";
+import { ResetBufferProcess } from "@/src/process/reset_buffer_process/reset_buffer_process";
 
 export namespace TickOrchestrator {
   type Params = {
@@ -54,7 +55,7 @@ export namespace TickOrchestrator {
           hysteresis,
         });
         if (DashManifest.arePlaylistsDistinct(nextPlaylist, playlistBefore)) {
-          yield* RepresentationChangePolicy.handleChange({
+          yield* RepresentationChangeProcess.handleChange({
             bufferManager: buffer,
             currentPlaylist,
             scheduler,
@@ -81,14 +82,14 @@ export namespace TickOrchestrator {
       }
 
       if (yield* Ref.get(bufferedEndOfStream)) {
-        yield* MediaSourceShutdownPolicy.endStream(mediaSource, buffer, mediaElement);
+        yield* MediaSourceShutdownProcess.endStream(mediaSource, buffer, mediaElement);
       }
 
       const bufferCleanupRanges = yield* BufferManager.cleanupOldBuffer(buffer, mediaElement).pipe(
         Effect.catchTag("MultipleBufferError", () =>
           Ref.get(currentPlaylist).pipe(
             Effect.flatMap((nextPlaylist) =>
-              RepresentationChangePolicy.handleChange({
+              ResetBufferProcess.reset({
                 bufferManager: buffer,
                 currentPlaylist,
                 scheduler,
